@@ -73,7 +73,7 @@
   --chart-3: oklch(0.7 0.14 160);
   --chart-4: oklch(0.78 0.14 85);
   --chart-5: oklch(0.62 0.2 20);
-  --radius: 0.625rem;
+  --radius: 1rem;
   --sidebar: oklch(0.985 0.003 250);
   --sidebar-foreground: oklch(0.21 0.026 260);
   --sidebar-primary: oklch(0.52 0.176 258);
@@ -123,7 +123,7 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-slate-50 text-slate-900;
   }
   html {
     @apply font-sans;

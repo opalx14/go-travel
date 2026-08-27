@@ -51,7 +51,7 @@ export function TravelBrief() {
   }
 
   return (
-    <section className="overflow-hidden rounded-[1.75rem] border bg-card shadow-[0_24px_70px_rgba(27,42,73,0.09)]">
+    <section className="overflow-hidden rounded-[1.75rem] border bg-card shadow-2xl shadow-slate-200/50 border-white/60">
       <div className="relative px-5 py-5 sm:px-6 sm:py-6">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,color-mix(in_oklch,var(--primary)_12%,transparent),transparent_42%)]" />
         <div className="relative">
@@ -69,7 +69,7 @@ export function TravelBrief() {
             </div>
           </div>
 
-          <div className="mt-5 rounded-2xl border bg-background/80 p-2 shadow-inner ring-1 ring-primary/5 transition focus-within:border-primary/35 focus-within:ring-4 focus-within:ring-primary/8">
+          <div className="mt-5 rounded-2xl border border-slate-200/60 bg-white/80 p-2 shadow-sm ring-1 ring-slate-900/5 backdrop-blur-xl transition-all focus-within:ring-2 focus-within:ring-primary/20 ">
             <textarea
               value={brief}
               onChange={(event) => setBrief(event.target.value)}
