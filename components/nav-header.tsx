@@ -28,7 +28,7 @@ export function NavHeader() {
 
         <div className="flex items-center gap-2">
           <span className="size-1.5 rounded-full bg-emerald-500" />
-          <span className="label-caps text-muted-foreground">Atlas sandbox</span>
+          <span className="label-caps text-muted-foreground">Live travel data via Atlas Sandbox</span>
         </div>
       </div>
     </header>

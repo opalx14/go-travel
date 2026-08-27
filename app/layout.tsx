@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TripIntent — Autonomous flight recovery",
+  title: "TripIntent — Agentic Travel Recovery",
   description:
-    "TripIntent recovers disrupted trips automatically, within the traveler's intent and spending authority.",
+    "An outcome-first travel recovery agent built for the Alibaba Cloud × Atlas × Qoder Agentic AI Hackathon 2026, using Atlas Sandbox for flight discovery and fare verification.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -30,6 +30,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <DemoProvider>
           <NavHeader />
           {children}
+          <footer className="mt-auto border-t border-border/50 pb-8 pt-10 text-center text-[11px] text-muted-foreground sm:py-12">
+            <p className="font-semibold text-foreground">TripIntent</p>
+            <p className="mt-1">Built for Alibaba Cloud × Atlas × Qoder Agentic AI Hackathon 2026</p>
+            <p className="mt-1.5">Atlas Sandbox &middot; Built with Qoder</p>
+          </footer>
         </DemoProvider>
       </body>
     </html>

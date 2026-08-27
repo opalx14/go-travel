@@ -1,3 +1,35 @@
+# TripIntent
+
+Book the outcome, not the flight.
+
+Built for the Alibaba Cloud × Atlas × Qoder Agentic AI Hackathon 2026.
+
+## Architecture
+
+```text
+Traveler
+  ↓
+TripIntent Agent
+  ↓
+Deterministic Recovery Policy
+  ↓
+Atlas Flight Booking Skill / CLI
+  ↓
+Atlas Sandbox
+```
+
+## Provenance
+
+- Development tooling: Qoder
+- Travel capability: Atlas Flight Booking
+- Environment: Atlas Sandbox
+- Disruption event: Simulated
+- Flight search / fare verification: Atlas Sandbox
+
+*Note: This is a demonstration project using the Atlas Sandbox environment. It does not perform live production bookings.*
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

@@ -192,6 +192,9 @@ export function JourneyTimeline() {
             <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
               Describe what your trip needs to achieve. TripIntent protects the outcome and steps in when the itinerary breaks it.
             </p>
+            <p className="mx-auto mt-5 inline-block rounded-full bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">
+              Built for Alibaba Cloud × Atlas × Qoder Agentic AI Hackathon 2026
+            </p>
           </div>
         </div>
       ) : (

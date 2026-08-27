@@ -65,6 +65,20 @@ export function AgentTraceDrawer() {
                   Simulated disruption, real Atlas Sandbox search and verification,
                   deterministic TripIntent policy.
                 </p>
+                <div className="mt-4 flex flex-wrap gap-x-6 gap-y-3 text-[11px] leading-tight">
+                  <div>
+                    <span className="block font-medium text-muted-foreground">Development</span>
+                    <span className="text-foreground">Built with Qoder</span>
+                  </div>
+                  <div>
+                    <span className="block font-medium text-muted-foreground">Travel capability</span>
+                    <span className="text-foreground">Atlas Flight Booking Skill</span>
+                  </div>
+                  <div>
+                    <span className="block font-medium text-muted-foreground">Environment</span>
+                    <span className="text-foreground">Atlas Sandbox</span>
+                  </div>
+                </div>
               </div>
               <button
                 type="button"
