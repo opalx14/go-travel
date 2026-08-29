@@ -117,6 +117,44 @@ export class RemoteAtlasProvider implements TripDataProvider {
           : "Offer verification failed",
     };
   }
+
+  async confirmPrice(
+    verification: OfferVerification
+  ): Promise<OfferVerification> {
+    if (
+      verification.source !== "ATLAS_SANDBOX" ||
+      !verification.bookingId
+    ) {
+      return verification;
+    }
+
+    const result = await fetchJson<VerifyResponse>(
+      "/api/atlas/confirm-price",
+      {
+        bookingId: verification.bookingId,
+        baggageSupported: verification.baggageSupported === true,
+      },
+      VERIFY_TIMEOUT_MS
+    );
+
+    if (result.ok && result.verification) {
+      return {
+        ...verification,
+        ...result.verification,
+        baggageSupported:
+          result.verification.baggageSupported ?? verification.baggageSupported,
+        seatSupported:
+          result.verification.seatSupported ?? verification.seatSupported,
+      };
+    }
+
+    return {
+      ...verification,
+      priceChange: "failed",
+      summary: "Atlas could not confirm the approved fare increase",
+      priceConfirmed: false,
+    };
+  }
 }
 
 /** The active provider for the browser demo. */

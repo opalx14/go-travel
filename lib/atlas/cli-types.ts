@@ -76,3 +76,19 @@ export interface RawAtlasVerifyData {
   seat_supported?: boolean;
   booking_id?: string;
 }
+
+export interface RawAtlasBaggageOption {
+  baggage_id: string;
+  segment_id: string;
+  piece?: number;
+  weight_kg: number;
+  size?: string;
+  category?: string;
+  price: number;
+  currency: string;
+}
+
+export interface RawAtlasBaggageData {
+  booking_id: string;
+  options: RawAtlasBaggageOption[];
+}

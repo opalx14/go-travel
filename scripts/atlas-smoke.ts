@@ -70,6 +70,14 @@ async function main(): Promise<void> {
   const verification = await tool.verifyOffer(chosen.atlasOfferId as string);
   console.log(`[smoke] price_change: ${verification.priceChange}`);
   console.log(`[smoke] summary: ${verification.summary}`);
+  console.log(`[smoke] baggage_status: ${verification.baggageStatus ?? "n/a"}`);
+  if (verification.baggageOptions?.length) {
+    console.log(
+      `[smoke] baggage_options: ${verification.baggageOptions
+        .map((option) => `${option.weightKg}kg $${option.price}`)
+        .join(", ")}`
+    );
+  }
 }
 
 main().catch((error) => {

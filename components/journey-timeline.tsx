@@ -34,7 +34,7 @@ function TimelineNode({
   return (
     <span
       className={cn(
-        "relative z-10 flex size-9 shrink-0 items-center justify-center rounded-full border bg-background shadow-sm transition-all duration-500",
+        "relative z-10 hidden size-9 shrink-0 items-center justify-center rounded-full border bg-background shadow-sm transition-all duration-500 sm:flex",
         state === "done" && "border-emerald-200 text-emerald-600",
         state === "active" && "border-primary/30 text-primary ring-4 ring-primary/8",
         state === "danger" && "border-rose-200 text-rose-600 ring-4 ring-rose-100",
@@ -184,17 +184,43 @@ export function JourneyTimeline() {
     <div>
       {!isProtected ? (
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-          <div className="mb-7 text-center">
-            <p className="label-caps text-primary">Outcome-first travel</p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
+          <div className="hidden mb-7 text-center sm:block">
+            <h1 className="text-4xl font-semibold tracking-[-0.04em]">
               Book the outcome, not the flight.
             </h1>
-            <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-              Describe what your trip needs to achieve. TripIntent protects the outcome and steps in when the itinerary breaks it.
+            <p className="mx-auto mt-3 max-w-lg text-base text-muted-foreground">
+              Tell TripIntent what must happen.
             </p>
-            <p className="mx-auto mt-5 inline-block rounded-full bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">
-              Built for Alibaba Cloud × Atlas × Qoder Agentic AI Hackathon 2026
+            <p className="mx-auto mt-4 inline-block rounded-full bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">
+              Alibaba Cloud × Atlas × Qoder · Hackathon 2026
             </p>
+          </div>
+
+          <div className="flex min-h-[calc(100svh-13.5rem)] items-center justify-center px-6 pb-16 text-center sm:hidden">
+            <div className="max-w-xs">
+              <span className="mx-auto flex size-12 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary shadow-sm">
+                <Sparkles className="size-5" />
+              </span>
+              <h1 className="mt-5 text-2xl font-semibold tracking-[-0.035em]">
+                Where do you need to be?
+              </h1>
+              <p className="mx-auto mt-2 max-w-[17rem] text-sm leading-relaxed text-muted-foreground">
+                Tell me the outcome. I’ll handle the trip.
+              </p>
+
+              <div className="relative mx-auto mt-8 h-16 w-full max-w-[17rem] overflow-hidden">
+                <div className="absolute inset-x-3 top-1/2 border-t border-dashed border-primary/20" />
+                <span className="absolute left-3 top-1/2 size-2 -translate-y-1/2 rounded-full bg-primary/30 ring-4 ring-primary/5" />
+                <span className="absolute right-3 top-1/2 size-2 -translate-y-1/2 rounded-full bg-primary ring-4 ring-primary/10" />
+                <span className="animate-monitor-plane absolute top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full border bg-background text-primary shadow-md">
+                  <Plane className="size-4" fill="currentColor" />
+                </span>
+                <div className="absolute inset-x-3 bottom-0 flex justify-between font-mono text-[9px] tracking-[0.12em] text-muted-foreground/70">
+                  <span>KUL</span>
+                  <span>SIN</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       ) : (
@@ -203,19 +229,19 @@ export function JourneyTimeline() {
         </div>
       )}
 
-      <section className={cn("relative", isProtected ? "mt-8" : "mt-7")}>
-        <div className="absolute bottom-10 left-[17px] top-4 w-px overflow-hidden bg-gradient-to-b from-emerald-200 via-border to-primary/20">
+      <section className={cn("relative", isProtected ? "mt-6 sm:mt-8" : "mt-4 sm:mt-7")}>
+        <div className="absolute bottom-10 left-[17px] top-4 hidden w-px overflow-hidden bg-gradient-to-b from-emerald-200 via-border to-primary/20 sm:block">
           {isProtected && (
             <span className="absolute inset-x-0 top-0 h-24 animate-timeline-flow bg-gradient-to-b from-transparent via-primary/45 to-transparent" />
           )}
         </div>
 
-        <div className="relative grid grid-cols-[36px_1fr] gap-x-4 pb-7 sm:gap-x-5">
+        <div className="relative grid grid-cols-1 pb-0 sm:grid-cols-[36px_1fr] sm:gap-x-5 sm:pb-7">
           <TimelineNode state={isProtected ? "done" : "active"}>
             {isProtected ? <ShieldCheck className="size-4" /> : <CircleDot className="size-4" />}
           </TimelineNode>
           <div className="min-w-0 pt-1">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="hidden flex-wrap items-center justify-between gap-2 sm:flex">
               <div>
                 <p className="text-sm font-semibold">1. Define the outcome</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
@@ -228,7 +254,7 @@ export function JourneyTimeline() {
                 </span>
               )}
             </div>
-            <div className="mt-3">
+            <div className="mt-0 sm:mt-3">
               <TravelBrief />
             </div>
           </div>
@@ -237,7 +263,7 @@ export function JourneyTimeline() {
         {isProtected && (
           <div
             ref={watchRef}
-            className="animate-in fade-in slide-in-from-bottom-3 relative grid scroll-mt-24 grid-cols-[36px_1fr] gap-x-4 pb-7 duration-500 sm:gap-x-5"
+            className="animate-in fade-in slide-in-from-bottom-3 relative grid scroll-mt-24 grid-cols-1 pb-6 duration-500 sm:grid-cols-[36px_1fr] sm:gap-x-5 sm:pb-7"
           >
             <TimelineNode state={disrupted ? "danger" : "active"}>
               {disrupted ? <TriangleAlert className="size-4" /> : <Radio className="size-4" />}
@@ -246,7 +272,7 @@ export function JourneyTimeline() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-sm font-semibold">2. Watch the journey</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
+                  <p className="mt-0.5 hidden text-xs text-muted-foreground sm:block">
                     Airline changes are monitored against your arrival goal.
                   </p>
                 </div>
@@ -264,17 +290,17 @@ export function JourneyTimeline() {
                 {!disrupted || phase === "disrupted" ? (
                   <ActionZone />
                 ) : (
-                  <div className="rounded-2xl border border-rose-200 bg-rose-50/60 px-4 py-3.5">
+                  <div className="rounded-2xl border border-rose-200 bg-card px-4 py-3.5 dark:border-rose-500/30">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-sm font-medium text-rose-700">
+                      <p className="text-sm font-medium text-rose-700 dark:text-rose-300">
                         Airline update received
                       </p>
-                      <span className="label-caps text-rose-600">Schedule changed</span>
+                      <span className="label-caps text-rose-600 dark:text-rose-400">Schedule changed</span>
                     </div>
                     <p className="mt-1.5 font-mono text-sm tabular-nums text-foreground">
                       {SCHEDULE_CHANGE_EVENT.originalDeparture} → {SCHEDULE_CHANGE_EVENT.originalArrival}
                       <span className="mx-2 text-muted-foreground">⇒</span>
-                      <span className="text-rose-700">
+                      <span className="text-rose-700 dark:text-rose-300">
                         {SCHEDULE_CHANGE_EVENT.newDeparture} → {SCHEDULE_CHANGE_EVENT.newArrival}
                       </span>
                     </p>
@@ -288,7 +314,7 @@ export function JourneyTimeline() {
         {disrupted && (
           <div
             ref={recoveryRef}
-            className="animate-in fade-in slide-in-from-bottom-3 relative grid scroll-mt-24 grid-cols-[36px_1fr] gap-x-4 pb-7 duration-500 sm:gap-x-5"
+            className="animate-in fade-in slide-in-from-bottom-3 relative grid scroll-mt-24 grid-cols-1 pb-6 duration-500 sm:grid-cols-[36px_1fr] sm:gap-x-5 sm:pb-7"
           >
             <TimelineNode state={searched ? "done" : "active"}>
               <Sparkles className="size-4" />
@@ -297,7 +323,7 @@ export function JourneyTimeline() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-sm font-semibold">3. Recover with Atlas</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
+                  <p className="mt-0.5 hidden text-xs text-muted-foreground sm:block">
                     Search real alternatives, filter them by intent, then verify the chosen fare.
                   </p>
                 </div>
@@ -317,7 +343,7 @@ export function JourneyTimeline() {
         {completed && (
           <div
             ref={resultRef}
-            className="animate-in fade-in slide-in-from-bottom-4 relative grid scroll-mt-24 grid-cols-[36px_1fr] gap-x-4 duration-700 sm:gap-x-5"
+            className="animate-in fade-in slide-in-from-bottom-4 relative grid scroll-mt-24 grid-cols-1 duration-700 sm:grid-cols-[36px_1fr] sm:gap-x-5"
           >
             <TimelineNode
               state={
@@ -334,7 +360,7 @@ export function JourneyTimeline() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-sm font-semibold">4. Present the recovery</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
+                  <p className="mt-0.5 hidden text-xs text-muted-foreground sm:block">
                     The passenger sees one clear next step instead of another search problem.
                   </p>
                 </div>

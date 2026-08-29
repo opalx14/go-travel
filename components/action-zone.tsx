@@ -51,18 +51,18 @@ export function ActionZone() {
 
   if (phase === "disrupted") {
     return (
-      <section className="disruption-card overflow-hidden rounded-3xl border border-rose-200 bg-gradient-to-b from-rose-50/80 to-card shadow-[0_22px_60px_rgba(190,24,93,0.10)]">
+      <section className="disruption-card overflow-hidden rounded-3xl border border-rose-200/80 bg-card shadow-[0_22px_60px_rgba(190,24,93,0.10)] dark:border-rose-400/35 dark:shadow-[0_22px_60px_rgba(244,63,94,0.08)]">
         <div className="relative px-6 py-8 text-center sm:px-8 sm:py-9">
           <div className="pointer-events-none absolute inset-x-10 top-0 h-px animate-disruption-scan bg-gradient-to-r from-transparent via-rose-400/70 to-transparent" />
 
-          <span className="choreo-reveal choreo-delay-1 mx-auto flex size-12 items-center justify-center rounded-full bg-rose-100 text-rose-700 ring-8 ring-rose-50">
+          <span className="choreo-reveal choreo-delay-1 mx-auto flex size-12 items-center justify-center rounded-full bg-rose-500/10 text-rose-600 ring-8 ring-rose-500/5 dark:text-rose-300">
             <TriangleAlert className="size-5" />
           </span>
           <div className="choreo-reveal choreo-delay-2">
             <p className="mt-5 text-xs font-semibold tracking-[0.16em] text-rose-600 uppercase">
               Airline signal detected
             </p>
-            <p className="mt-1 text-base font-semibold tracking-[-0.01em] text-rose-800">
+            <p className="mt-1 text-base font-semibold tracking-[-0.01em] text-rose-800 dark:text-rose-300">
               Your flight no longer meets the outcome
             </p>
           </div>
@@ -79,9 +79,9 @@ export function ActionZone() {
               <ArrowRight className="size-3.5" />
             </span>
 
-            <div className="choreo-reveal choreo-delay-5 rounded-2xl border border-rose-200 bg-rose-100/65 px-4 py-3 text-center sm:text-left">
+            <div className="choreo-reveal choreo-delay-5 rounded-2xl border border-rose-200/80 bg-rose-500/5 px-4 py-3 text-center dark:border-rose-400/30 sm:text-left">
               <p className="text-[11px] font-medium text-rose-600 uppercase tracking-[0.12em]">Changed</p>
-              <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-rose-700">
+              <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-rose-700 dark:text-rose-300">
                 {SCHEDULE_CHANGE_EVENT.newDeparture} → {SCHEDULE_CHANGE_EVENT.newArrival}
               </p>
             </div>
@@ -91,7 +91,7 @@ export function ActionZone() {
             <p className="text-sm text-muted-foreground">
               Arrival goal <span className="font-mono font-medium text-foreground">{intent.latestArrival}</span>
               <span className="mx-2 text-muted-foreground/45">•</span>
-              <span className="font-semibold text-rose-700">
+              <span className="font-semibold text-rose-700 dark:text-rose-300">
                 {lateBy(SCHEDULE_CHANGE_EVENT.newArrival, intent.latestArrival)}
               </span>
             </p>
@@ -124,8 +124,8 @@ export function ActionZone() {
 
       return (
         <section className="animate-in fade-in overflow-hidden rounded-3xl border bg-card shadow-[0_18px_50px_rgba(39,53,86,0.08)] duration-500">
-          <div className="border-b bg-emerald-50/60 px-6 py-5 text-center sm:px-8">
-            <p className="flex items-center justify-center gap-2 text-lg font-semibold text-emerald-700">
+          <div className="border-b border-emerald-500/15 bg-card px-6 py-5 text-center dark:border-emerald-400/15 sm:px-8">
+            <p className="flex items-center justify-center gap-2 text-lg font-semibold text-emerald-700 dark:text-emerald-400">
               <ShieldCheck className="size-5" />
               Recovery ready
             </p>
@@ -295,7 +295,11 @@ export function ActionZone() {
         <Button
           size="lg"
           className="h-12 rounded-xl px-8 text-[15px] shadow-sm"
-          onClick={protectTrip}
+          onClick={() =>
+            void protectTrip(
+              `Protect my current trip. Arrive by ${intent.latestArrival}, minimum ${intent.minBaggageKg}kg baggage, allow up to ${intent.departureFlexibilityHours} hours later departure, and spend up to $${intent.maxExtraSpendUsd} extra ${intent.autopilot ? "without asking me" : "but ask me first"}.`
+            )
+          }
         >
           Protect my trip
         </Button>
@@ -307,7 +311,7 @@ export function ActionZone() {
   }
 
   return (
-    <div className="animate-in fade-in overflow-hidden rounded-3xl border bg-card/80 shadow-[0_16px_44px_rgba(27,42,73,0.06)] duration-700">
+    <div className="animate-in fade-in overflow-hidden rounded-3xl border bg-card shadow-[0_16px_44px_rgba(27,42,73,0.06)] duration-700">
       <div className="px-5 py-5 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>

@@ -7,30 +7,55 @@ Built for the Alibaba Cloud × Atlas × Qoder Agentic AI Hackathon 2026.
 ## Architecture
 
 ```text
-Traveler
+Traveler natural-language brief
   ↓
-TripIntent Agent
+Qwen intent extraction (DashScope)
+  ↘ deterministic local fallback
+  ↓
+TravelIntent contract
   ↓
 Deterministic Recovery Policy
   ↓
 Atlas Flight Booking Skill / CLI
+  ├─ flight search
+  ├─ fare verification
+  ├─ explicit price-increase confirmation
+  └─ baggage option validation
   ↓
 Atlas Sandbox
 ```
 
+The recovery policy never treats an unknown Atlas baggage allowance as confirmed. When the passenger requires checked baggage, TripIntent verifies the selected offer, reads the available baggage options, chooses the cheapest option that satisfies the required weight, and includes that add-on in delegated spending authority.
+
+## Natural-language intent
+
+Set `DASHSCOPE_API_KEY` on the server to enable Qwen extraction. `QWEN_MODEL` is optional and defaults to `qwen-flash`. If Qwen is unavailable or not configured, the app falls back to a deterministic local parser and labels that provenance in the UI.
+
 ## Provenance
 
 - Development tooling: Qoder
+- Intent extraction: Qwen via Alibaba Cloud DashScope when configured; deterministic fallback otherwise
 - Travel capability: Atlas Flight Booking
 - Environment: Atlas Sandbox
 - Disruption event: Simulated
-- Flight search / fare verification: Atlas Sandbox
+- Flight search / fare verification / price confirmation / baggage options: Atlas Sandbox
 
 *Note: This is a demonstration project using the Atlas Sandbox environment. It does not perform live production bookings.*
 
 ---
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+
+## Verification
+
+```bash
+bun test
+bun run lint
+bun run build
+bun run atlas:smoke
+```
+
+`atlas:smoke` is read-only with respect to booking: it searches, verifies one eligible offer, and inspects baggage options. It never creates an order or pays.
 
 ## Getting Started
 

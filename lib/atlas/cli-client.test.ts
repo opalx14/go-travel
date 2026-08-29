@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
+  baggageListArgs,
+  confirmPriceArgs,
   CliError,
   defaultCliRunner,
   runCli,
@@ -55,6 +57,27 @@ describe("argument construction", () => {
       "verify",
       "--offer-id",
       "off_AbC-123_XyZ",
+      "--json",
+    ]);
+  });
+
+  test("baggage list args preserve the opaque booking id", () => {
+    expect(baggageListArgs("book_AbC-123_XyZ")).toEqual([
+      "booking",
+      "baggage",
+      "list",
+      "--booking-id",
+      "book_AbC-123_XyZ",
+      "--json",
+    ]);
+  });
+
+  test("confirm-price args preserve the opaque booking id", () => {
+    expect(confirmPriceArgs("book_Price-123")).toEqual([
+      "booking",
+      "confirm-price",
+      "--booking-id",
+      "book_Price-123",
       "--json",
     ]);
   });

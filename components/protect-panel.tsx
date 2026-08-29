@@ -47,7 +47,7 @@ export function ProtectPanel() {
               )}
             </span>
             <span className="mt-0.5 block truncate text-xs text-muted-foreground sm:text-sm">
-              Arrive by {intent.latestArrival} · {intent.minBaggageKg} kg · up to ${intent.maxExtraSpendUsd} · Autopilot {intent.autopilot ? "on" : "off"}
+              Arrive by {intent.latestArrival} · +{intent.departureFlexibilityHours}h flex · {intent.minBaggageKg} kg · up to ${intent.maxExtraSpendUsd} · Autopilot {intent.autopilot ? "on" : "off"}
             </span>
           </span>
         </span>
@@ -63,7 +63,8 @@ export function ProtectPanel() {
         <div className="animate-in slide-in-from-top-1 border-t px-5 pb-4 duration-200">
           <div className="divide-y">
             <Row term="Arrive by">{intent.latestArrival}</Row>
-            <Row term="Baggage">{intent.minBaggageKg} kg</Row>
+            <Row term="Baggage">{intent.minBaggageKg} kg minimum</Row>
+            <Row term="Departure flexibility">+{intent.departureFlexibilityHours} hours</Row>
             <Row term="Extra spend">
               {editable ? (
                 <select
@@ -72,7 +73,7 @@ export function ProtectPanel() {
                   onChange={(event) => setMaxExtraSpend(Number(event.target.value))}
                   className="rounded-md border border-border bg-card px-1.5 py-0.5 text-sm font-semibold text-primary tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                 >
-                  {[10, 30, 50].map((usd) => (
+                  {Array.from(new Set([10, 30, 50, 75, 100, intent.maxExtraSpendUsd])).sort((a, b) => a - b).map((usd) => (
                     <option key={usd} value={usd}>
                       Up to ${usd}
                     </option>

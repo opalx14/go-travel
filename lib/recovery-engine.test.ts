@@ -19,7 +19,9 @@ const OVER_AUTHORITY_INTENT = { ...DEFAULT_INTENT, maxExtraSpendUsd: 10 };
 /** Build a provider with scripted alternatives and verification results. */
 function fakeProvider(
   options: FlightOption[],
-  verification: OfferVerification | (() => OfferVerification)
+  verification:
+    | OfferVerification
+    | ((option: FlightOption) => OfferVerification)
 ): TripDataProvider {
   return {
     async getDisruption(): Promise<DisruptionEvent> {
@@ -28,8 +30,10 @@ function fakeProvider(
     async searchAlternatives(): Promise<FlightOption[]> {
       return options;
     },
-    async verifyOffer(): Promise<OfferVerification> {
-      return typeof verification === "function" ? verification() : verification;
+    async verifyOffer(selected): Promise<OfferVerification> {
+      return typeof verification === "function"
+        ? verification(selected)
+        : verification;
     },
   };
 }
@@ -172,6 +176,138 @@ describe("runRecovery — fare verification branches", () => {
   });
 });
 
+describe("runRecovery — Atlas baggage validation", () => {
+  test("baggage cost is added before the spending-authority gate", async () => {
+    const atlasOption = option({
+      id: "atlas-20kg",
+      label: "Atlas 20kg",
+      source: "ATLAS_SANDBOX",
+      baggageKg: undefined,
+      replacementPriceUsd: 24.98,
+      extraCostUsd: 24.98,
+    });
+    const provider = fakeProvider([atlasOption], {
+      priceChange: "unchanged",
+      currentPrice: 24.98,
+      previousPrice: 24.98,
+      currency: "USD",
+      source: "ATLAS_SANDBOX",
+      summary: "Fare unchanged at $24.98",
+      baggageSupported: true,
+      baggageStatus: "available",
+      baggageOptions: [
+        {
+          baggageId: "bag-20",
+          segmentId: "seg-1",
+          weightKg: 20,
+          price: 25.98,
+          currency: "USD",
+        },
+      ],
+    });
+
+    const outcome = await runRecovery(ORIGINAL_FLIGHT, DEFAULT_INTENT, provider);
+    expect(outcome.status).toBe("NEEDS_APPROVAL");
+    expect(outcome.approval).toBe("OVER_AUTHORITY");
+    expect(outcome.selected?.baggageKg).toBe(20);
+    expect(outcome.selected?.baggagePriceUsd).toBe(25.98);
+    expect(outcome.selected?.extraCostUsd).toBeCloseTo(50.96, 2);
+    expect(outcome.verification?.priceChange).toBe("unchanged");
+    expect(outcome.steps.some((step) => step.title === "Baggage requirement verified")).toBe(true);
+  });
+
+  test("rejects a cheaper offer that cannot meet baggage and tries the next candidate", async () => {
+    const provider = fakeProvider(
+      [
+        option({
+          id: "atlas-light",
+          label: "Atlas Light",
+          source: "ATLAS_SANDBOX",
+          baggageKg: undefined,
+          replacementPriceUsd: 20,
+          extraCostUsd: 20,
+        }),
+        option({
+          id: "atlas-fit",
+          label: "Atlas Fit",
+          source: "ATLAS_SANDBOX",
+          baggageKg: undefined,
+          replacementPriceUsd: 30,
+          extraCostUsd: 30,
+        }),
+      ],
+      (selected) => ({
+        priceChange: "unchanged",
+        currentPrice: selected.id === "atlas-light" ? 20 : 30,
+        previousPrice: selected.id === "atlas-light" ? 20 : 30,
+        currency: "USD",
+        source: "ATLAS_SANDBOX",
+        summary: "Fare unchanged",
+        baggageSupported: true,
+        baggageStatus: "available",
+        baggageOptions:
+          selected.id === "atlas-light"
+            ? [
+                {
+                  baggageId: "bag-10",
+                  segmentId: "seg-light",
+                  weightKg: 10,
+                  price: 10,
+                  currency: "USD",
+                },
+              ]
+            : [
+                {
+                  baggageId: "bag-20",
+                  segmentId: "seg-fit",
+                  weightKg: 20,
+                  price: 5,
+                  currency: "USD",
+                },
+              ],
+      })
+    );
+
+    const outcome = await runRecovery(ORIGINAL_FLIGHT, DEFAULT_INTENT, provider);
+    expect(outcome.status).toBe("RECOVERED");
+    expect(outcome.selected?.id).toBe("atlas-fit");
+    expect(outcome.selected?.extraCostUsd).toBe(35);
+    const rejected = outcome.evaluations.find(
+      (evaluation) => evaluation.option.id === "atlas-light"
+    );
+    expect(rejected?.valid).toBe(false);
+    expect(rejected?.reasons.join(" ")).toContain("20kg");
+  });
+
+  test("fails safely when Atlas cannot confirm required baggage", async () => {
+    const provider = fakeProvider(
+      [
+        option({
+          id: "atlas-unknown",
+          source: "ATLAS_SANDBOX",
+          baggageKg: undefined,
+          replacementPriceUsd: 20,
+          extraCostUsd: 20,
+        }),
+      ],
+      {
+        priceChange: "unchanged",
+        currentPrice: 20,
+        currency: "USD",
+        source: "ATLAS_SANDBOX",
+        summary: "Fare unchanged",
+        baggageSupported: true,
+        baggageStatus: "unknown",
+      }
+    );
+
+    const outcome = await runRecovery(ORIGINAL_FLIGHT, DEFAULT_INTENT, provider);
+    expect(outcome.status).toBe("FAILED");
+    expect(outcome.selected).toBeNull();
+    expect(outcome.steps.at(-1)?.detail).toContain("20kg baggage requirement");
+  });
+});
+
 describe("runRecovery — authority and autopilot gates", () => {
   test("$10 authority + Autopilot ON => NEEDS_APPROVAL OVER_AUTHORITY (no verify yet)", async () => {
     const outcome = await runRecovery(
@@ -211,7 +347,7 @@ describe("runRecovery — authority and autopilot gates", () => {
 });
 
 describe("passenger decision on pending recoveries", () => {
-  test("approving PRICE_INCREASED accepts the increase without another CLI call", async () => {
+  test("approving PRICE_INCREASED in a simulated provider accepts the increase locally", async () => {
     const provider = fakeProvider([option({ extraCostUsd: 20 })], {
       priceChange: "increased",
       previousPrice: 20,
@@ -226,8 +362,49 @@ describe("passenger decision on pending recoveries", () => {
     expect(approved.approvedByPassenger).toBe(true);
     expect(approved.verification?.priceChange).toBe("increased");
     expect(approved.steps.at(-1)?.detail).toContain(
-      "price confirmation and booking deferred"
+      "simulated provider path"
     );
+  });
+
+  test("approving an Atlas PRICE_INCREASED checkpoint calls confirm-price", async () => {
+    let confirmCalls = 0;
+    const provider: TripDataProvider = {
+      async getDisruption() {
+        return SCHEDULE_CHANGE_EVENT;
+      },
+      async searchAlternatives() {
+        return [option({ id: "atlas-price-up", extraCostUsd: 20 })];
+      },
+      async verifyOffer() {
+        return {
+          priceChange: "increased",
+          previousPrice: 20,
+          currentPrice: 28,
+          currency: "USD",
+          source: "ATLAS_SANDBOX",
+          summary: "Fare increased",
+          bookingId: "book_price_up",
+        };
+      },
+      async confirmPrice(verification) {
+        confirmCalls += 1;
+        expect(verification.bookingId).toBe("book_price_up");
+        return {
+          ...verification,
+          priceConfirmed: true,
+          summary: "Fare increase confirmed at $28.00",
+        };
+      },
+    };
+
+    const pending = await runRecovery(ORIGINAL_FLIGHT, DEFAULT_INTENT, provider);
+    expect(pending.approval).toBe("PRICE_INCREASED");
+    const approved = await approveRecovery(ORIGINAL_FLIGHT, pending, provider);
+
+    expect(confirmCalls).toBe(1);
+    expect(approved.status).toBe("RECOVERED");
+    expect(approved.verification?.priceConfirmed).toBe(true);
+    expect(approved.steps.at(-1)?.title).toBe("Price increase confirmed");
   });
 
   test("approving OVER_AUTHORITY verifies then RECOVERS when unchanged", async () => {

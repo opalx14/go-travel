@@ -82,6 +82,9 @@ describe("parseCliOutput — verify envelopes", () => {
     expect(result.priceChange).toBe("unchanged");
     expect(result.currentPrice).toBe(42.5);
     expect(result.currency).toBe("USD");
+    expect(result.bookingId).toBe("book_1");
+    expect(result.baggageSupported).toBe(true);
+    expect(result.seatSupported).toBe(false);
   });
 
   test("PRICE_CONFIRMATION_REQUIRED is a price increase", () => {
@@ -97,6 +100,26 @@ describe("parseCliOutput — verify envelopes", () => {
     expect(result.currentPrice).toBe(48);
   });
 
+  test("PRICE_CONFIRMED is a confirmed price-increase result", () => {
+    const stdout = JSON.stringify({
+      status: "success",
+      code: "PRICE_CONFIRMED",
+      data: {
+        booking_id: "book_price_up",
+        previous_price: 42.5,
+        current_price: 48,
+        currency: "USD",
+        price_change: "increased",
+      },
+    });
+    const result = parseCliOutput(stdout);
+    expect(result.kind).toBe("VERIFY_OK");
+    if (result.kind !== "VERIFY_OK") return;
+    expect(result.priceConfirmed).toBe(true);
+    expect(result.bookingId).toBe("book_price_up");
+    expect(result.currentPrice).toBe(48);
+  });
+
   test("OFFER_EXPIRED is a failure code", () => {
     const stdout = JSON.stringify({
       status: "error",
@@ -107,6 +130,41 @@ describe("parseCliOutput — verify envelopes", () => {
     expect(result.kind).toBe("FAILURE");
     if (result.kind !== "FAILURE") return;
     expect(result.code).toBe("OFFER_EXPIRED");
+  });
+});
+
+describe("parseCliOutput — baggage envelopes", () => {
+  test("BAGGAGE_OPTIONS_LISTED returns normalized raw options", () => {
+    const stdout = JSON.stringify({
+      status: "success",
+      code: "BAGGAGE_OPTIONS_LISTED",
+      data: {
+        booking_id: "book_1",
+        options: [
+          {
+            baggage_id: "bag_20",
+            segment_id: "seg_1",
+            weight_kg: 20,
+            price: 25.98,
+            currency: "USD",
+          },
+        ],
+      },
+    });
+    const result = parseCliOutput(stdout);
+    expect(result.kind).toBe("BAGGAGE_OK");
+    if (result.kind !== "BAGGAGE_OK") return;
+    expect(result.bookingId).toBe("book_1");
+    expect(result.options[0]?.weight_kg).toBe(20);
+    expect(result.options[0]?.price).toBe(25.98);
+  });
+
+  test("BAGGAGE_UNAVAILABLE is not treated as malformed", () => {
+    const stdout = JSON.stringify({
+      status: "error",
+      code: "BAGGAGE_UNAVAILABLE",
+    });
+    expect(parseCliOutput(stdout).kind).toBe("BAGGAGE_UNAVAILABLE");
   });
 });
 

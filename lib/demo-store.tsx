@@ -18,6 +18,12 @@ import type {
   TravelIntent,
 } from "./types";
 import {
+  parseTravelBriefLocally,
+  type IntentExtractionSource,
+  type IntentField,
+  type ParsedTravelBrief,
+} from "./intent-parser";
+import {
   DEFAULT_INTENT,
   ORIGINAL_FLIGHT,
   SCHEDULE_CHANGE_EVENT,
@@ -51,6 +57,36 @@ export interface OpsStats {
   needsApproval: number;
 }
 
+interface IntentParseResponse extends ParsedTravelBrief {
+  ok: boolean;
+}
+
+async function resolveTravelBrief(
+  brief: string,
+  fallbackIntent: TravelIntent
+): Promise<ParsedTravelBrief> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const response = await fetch("/api/intent/parse", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brief }),
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error("Intent parser unavailable");
+    const payload = (await response.json()) as IntentParseResponse;
+    if (!payload.ok || !payload.intent || !Array.isArray(payload.matched)) {
+      throw new Error("Intent parser returned invalid data");
+    }
+    return payload;
+  } catch {
+    return parseTravelBriefLocally(brief, fallbackIntent);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 interface DemoStore {
   trip: Flight;
   intent: TravelIntent;
@@ -68,9 +104,11 @@ interface DemoStore {
   isProtected: boolean;
   exceptions: DisruptionEvent[];
   stats: OpsStats;
+  intentMatchedFields: IntentField[];
+  intentSource: IntentExtractionSource | null;
   setAutopilot: (enabled: boolean) => void;
   setMaxExtraSpend: (usd: number) => void;
-  protectTrip: () => void;
+  protectTrip: (brief: string) => Promise<void>;
   simulateDisruption: () => void;
   findRecovery: () => void;
   approveRecovery: () => void;
@@ -100,6 +138,8 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   const [outcome, setOutcome] = useState<RecoveryOutcome | null>(null);
   const [exceptions, setExceptions] = useState<DisruptionEvent[]>([]);
   const [isProtected, setIsProtected] = useState(INITIAL_IS_PROTECTED);
+  const [intentMatchedFields, setIntentMatchedFields] = useState<IntentField[]>([]);
+  const [intentSource, setIntentSource] = useState<IntentExtractionSource | null>(null);
   const [stats, setStats] = useState<OpsStats>({
     exceptions: 0,
     autoResolved: 0,
@@ -120,8 +160,15 @@ export function DemoProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => clearTimers, [clearTimers]);
 
-  const protectTrip = useCallback(() => {
+  const protectTrip = useCallback(async (brief: string) => {
     clearTimers();
+    const generation = ++runIdRef.current;
+    const parsed = await resolveTravelBrief(brief, intent);
+    if (generation !== runIdRef.current) return;
+
+    setIntent(parsed.intent);
+    setIntentMatchedFields(parsed.matched);
+    setIntentSource(parsed.source);
     setIsProtected(true);
 
     // Product choreography: once protection is active, the prototype receives
@@ -139,7 +186,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         setPhase("disrupted");
       }, 5600)
     );
-  }, [clearTimers]);
+  }, [clearTimers, intent]);
 
   /**
    * Record the (simulated) schedule change and hold at the disrupted phase.
@@ -234,6 +281,9 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     runIdRef.current++;
     clearTimers();
     setTrip(ORIGINAL_FLIGHT);
+    setIntent(DEFAULT_INTENT);
+    setIntentMatchedFields([]);
+    setIntentSource(null);
     setPhase("idle");
     setPlayedSteps([]);
     setActiveRun(null);
@@ -324,6 +374,8 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       isProtected,
       exceptions,
       stats,
+      intentMatchedFields,
+      intentSource,
       setAutopilot,
       setMaxExtraSpend,
       protectTrip,
@@ -343,6 +395,8 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       isProtected,
       exceptions,
       stats,
+      intentMatchedFields,
+      intentSource,
       setAutopilot,
       setMaxExtraSpend,
       protectTrip,

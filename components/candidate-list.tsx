@@ -116,7 +116,7 @@ export function CandidateList({
                 {option.source === "ATLAS_SANDBOX" &&
                   option.replacementPriceUsd !== undefined && (
                     <p className="mt-1 text-[10px] text-muted-foreground/80 tabular-nums">
-                      ${option.replacementPriceUsd} fare · vs $0 recoverable*
+                      ${option.replacementPriceUsd} fare{option.baggagePriceUsd !== undefined ? ` + $${option.baggagePriceUsd} baggage` : ""} · vs $0 recoverable*
                     </p>
                   )}
               </div>

@@ -160,3 +160,26 @@ export function searchArgs(input: {
 export function verifyArgs(offerId: string): string[] {
   return ["offer", "verify", "--offer-id", offerId, "--json"];
 }
+
+/** List checked-baggage options attached to a verified booking. */
+export function baggageListArgs(bookingId: string): string[] {
+  return [
+    "booking",
+    "baggage",
+    "list",
+    "--booking-id",
+    bookingId,
+    "--json",
+  ];
+}
+
+/** Confirm a verified fare increase after explicit passenger approval. */
+export function confirmPriceArgs(bookingId: string): string[] {
+  return [
+    "booking",
+    "confirm-price",
+    "--booking-id",
+    bookingId,
+    "--json",
+  ];
+}

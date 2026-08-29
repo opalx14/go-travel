@@ -18,7 +18,7 @@ function RouteMark() {
 export function NavHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/70 bg-background/85 backdrop-blur-md">
-      <div className="mx-auto flex h-16 w-full max-w-4xl items-center justify-between gap-6 px-5 sm:px-8">
+      <div className="mx-auto flex h-14 w-full max-w-4xl items-center justify-between gap-3 px-4 sm:h-16 sm:gap-6 sm:px-8">
         <Link href="/" className="group flex items-center gap-3">
           <RouteMark />
           <span className="text-[17px] leading-none font-semibold tracking-[-0.02em]">
@@ -28,7 +28,8 @@ export function NavHeader() {
 
         <div className="flex items-center gap-2">
           <span className="size-1.5 rounded-full bg-emerald-500" />
-          <span className="label-caps text-muted-foreground">Live travel data via Atlas Sandbox</span>
+          <span className="text-[11px] font-medium text-muted-foreground sm:hidden">Atlas live</span>
+          <span className="label-caps hidden text-muted-foreground sm:inline">Live travel data via Atlas Sandbox</span>
         </div>
       </div>
     </header>

@@ -3,8 +3,10 @@
  * Raw subprocess and wire types never leave this module — callers receive
  * domain types (`FlightOption`, `OfferVerification`) or typed errors.
  */
-import type { FlightOption, OfferVerification } from "../types";
+import type { BaggageOption, FlightOption, OfferVerification } from "../types";
 import {
+  baggageListArgs,
+  confirmPriceArgs,
   runCli,
   searchArgs,
   verifyArgs,
@@ -18,6 +20,8 @@ import { mapOffer } from "./mapper";
 export const SEARCH_TIMEOUT_MS = 40_000;
 /** Verify command budget. */
 export const VERIFY_TIMEOUT_MS = 20_000;
+/** Optional-service lookup budget after a successful verification. */
+export const BAGGAGE_TIMEOUT_MS = 15_000;
 
 export interface AtlasSearchInput {
   origin: string;
@@ -51,6 +55,8 @@ export class AtlasToolError extends Error {
 export interface AtlasFlightTool {
   searchFlights(input: AtlasSearchInput): Promise<AtlasSearchResult>;
   verifyOffer(offerId: string): Promise<OfferVerification>;
+  confirmPrice(bookingId: string): Promise<OfferVerification>;
+  listBaggage(bookingId: string): Promise<BaggageOption[]>;
 }
 
 export interface AtlasFlightToolOptions {
@@ -105,6 +111,69 @@ export function createAtlasFlightTool(
       );
     },
 
+    async confirmPrice(bookingId) {
+      let stdout: string;
+      try {
+        stdout = await runCli(
+          confirmPriceArgs(bookingId),
+          VERIFY_TIMEOUT_MS,
+          runner
+        );
+      } catch (error) {
+        throw new AtlasToolError(
+          error instanceof CliError ? error.kind : "SERVICE_REQUEST_FAILED"
+        );
+      }
+
+      const parsed = parseCliOutput(stdout);
+      if (parsed.kind !== "VERIFY_OK" || !parsed.priceConfirmed) {
+        throw new AtlasToolError(
+          parsed.kind === "FAILURE" ? parsed.code : "SERVICE_RESPONSE_INVALID"
+        );
+      }
+      return {
+        priceChange: parsed.priceChange,
+        previousPrice: parsed.previousPrice,
+        currentPrice: parsed.currentPrice,
+        currency: parsed.currency,
+        source: "ATLAS_SANDBOX",
+        summary: `Fare increase confirmed at ${usd(
+          parsed.currentPrice ?? parsed.previousPrice ?? 0
+        )}`,
+        bookingId: parsed.bookingId ?? bookingId,
+        priceConfirmed: true,
+      };
+    },
+
+    async listBaggage(bookingId) {
+      let stdout: string;
+      try {
+        stdout = await runCli(
+          baggageListArgs(bookingId),
+          BAGGAGE_TIMEOUT_MS,
+          runner
+        );
+      } catch (error) {
+        throw new AtlasToolError(
+          error instanceof CliError ? error.kind : "SERVICE_REQUEST_FAILED"
+        );
+      }
+      const parsed = parseCliOutput(stdout);
+      if (parsed.kind === "BAGGAGE_UNAVAILABLE") return [];
+      if (parsed.kind !== "BAGGAGE_OK") {
+        throw new AtlasToolError(
+          parsed.kind === "FAILURE" ? parsed.code : "SERVICE_RESPONSE_INVALID"
+        );
+      }
+      return parsed.options.map((option) => ({
+        baggageId: option.baggage_id,
+        segmentId: option.segment_id,
+        weightKg: option.weight_kg,
+        price: option.price,
+        currency: option.currency,
+      }));
+    },
+
     async verifyOffer(offerId) {
       let stdout: string;
       try {
@@ -117,7 +186,15 @@ export function createAtlasFlightTool(
 
       const parsed = parseCliOutput(stdout);
       if (parsed.kind === "VERIFY_OK") {
-        const { priceChange, previousPrice, currentPrice, currency } = parsed;
+        const {
+          priceChange,
+          previousPrice,
+          currentPrice,
+          currency,
+          bookingId,
+          baggageSupported,
+          seatSupported,
+        } = parsed;
         const summary =
           priceChange === "increased"
             ? `Fare increased: ${usd(previousPrice ?? 0)} → ${usd(
@@ -128,14 +205,56 @@ export function createAtlasFlightTool(
                   previousPrice ?? 0
                 )})`
               : `Fare unchanged at ${usd(currentPrice ?? previousPrice ?? 0)}`;
-        return {
+
+        const base: OfferVerification = {
           priceChange,
           previousPrice,
           currentPrice,
           currency,
           source: "ATLAS_SANDBOX",
           summary,
+          bookingId,
+          baggageSupported,
+          seatSupported,
+          baggageStatus:
+            baggageSupported === false ? "unavailable" : "unknown",
         };
+
+        // PRICE_CONFIRMATION_REQUIRED is a mandatory checkpoint. Do not run
+        // another CLI command after a price increase until the passenger acts.
+        if (priceChange === "increased" || !bookingId || !baggageSupported) {
+          return base;
+        }
+
+        try {
+          const baggageStdout = await runCli(
+            baggageListArgs(bookingId),
+            BAGGAGE_TIMEOUT_MS,
+            runner
+          );
+          const baggageParsed = parseCliOutput(baggageStdout);
+          if (baggageParsed.kind === "BAGGAGE_OK") {
+            return {
+              ...base,
+              baggageStatus: "available",
+              baggageOptions: baggageParsed.options.map((option) => ({
+                baggageId: option.baggage_id,
+                segmentId: option.segment_id,
+                weightKg: option.weight_kg,
+                price: option.price,
+                currency: option.currency,
+              })),
+            };
+          }
+          if (baggageParsed.kind === "BAGGAGE_UNAVAILABLE") {
+            return { ...base, baggageStatus: "unavailable", baggageOptions: [] };
+          }
+          return base;
+        } catch {
+          // Fare verification remains valid even when the optional-service
+          // lookup fails. The recovery engine treats baggage as unconfirmed.
+          return base;
+        }
       }
       throw new AtlasToolError(
         parsed.kind === "FAILURE" ? parsed.code : "SERVICE_RESPONSE_INVALID"

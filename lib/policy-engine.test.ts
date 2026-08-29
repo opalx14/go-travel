@@ -64,7 +64,7 @@ describe("evaluateOption — hard constraints vs spending authority", () => {
     expect(baggage?.passed).toBe(true);
     expect(baggage?.reason).toBeUndefined();
     expect(baggage?.detail).toBe(
-      "Allowance unknown — not evaluated from search result"
+      "Pending Atlas verification · must confirm ≥ 20kg"
     );
   });
 

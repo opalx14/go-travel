@@ -45,10 +45,15 @@ export interface FlightOption {
   departure: string; // "HH:MM"
   arrival: string; // "HH:MM"
   /**
-   * Checked baggage allowance in kg. Optional: Atlas search results carry
-   * no allowance weight, so it stays undefined rather than being invented.
+   * Checked baggage allowance in kg. Optional until Atlas verification and
+   * baggage-option lookup confirm a usable allowance.
    */
   baggageKg?: number;
+  /** Selected baggage add-on price when required by the passenger contract. */
+  baggagePriceUsd?: number;
+  /** Opaque Atlas baggage option/segment ids retained for a later booking step. */
+  atlasBaggageId?: string;
+  atlasBaggageSegmentId?: string;
   /** Additional cost versus the original booking, in USD. */
   extraCostUsd: number;
   stops?: number;
@@ -151,6 +156,8 @@ export interface RecoveryStep {
 /** Full outcome of one recovery run, including the decision timeline. */
 export interface RecoveryOutcome {
   status: RecoveryStatus;
+  /** Recovery contract used for this run. */
+  intent?: TravelIntent;
   event: DisruptionEvent;
   evaluations: OptionEvaluation[];
   selected: FlightOption | null;
@@ -164,9 +171,20 @@ export interface RecoveryOutcome {
   verification?: OfferVerification;
 }
 
+/** One checked-baggage option normalized from Atlas. */
+export interface BaggageOption {
+  /** Opaque Atlas baggage id, preserved verbatim. */
+  baggageId: string;
+  /** Opaque segment id this option belongs to. */
+  segmentId: string;
+  weightKg: number;
+  price: number;
+  currency: string;
+}
+
 /**
- * Provider-side fare verification of the selected offer. Phase 2 stops
- * here: booking/payment happen in a later phase.
+ * Provider-side verification of the selected offer. Besides fare freshness,
+ * Atlas can expose optional-service capability and normalized baggage options.
  */
 export interface OfferVerification {
   priceChange: "unchanged" | "decreased" | "increased" | "expired" | "failed";
@@ -175,6 +193,15 @@ export interface OfferVerification {
   currency?: string;
   source: "ATLAS_SANDBOX" | "SIMULATED_FALLBACK";
   summary: string;
+  /** Opaque Atlas booking id returned after verification. */
+  bookingId?: string;
+  baggageSupported?: boolean;
+  seatSupported?: boolean;
+  /** Whether baggage options could be inspected after verification. */
+  baggageStatus?: "available" | "unavailable" | "unknown";
+  baggageOptions?: BaggageOption[];
+  /** True only after Atlas booking confirm-price succeeds. */
+  priceConfirmed?: boolean;
 }
 
 /** Provider abstraction — mock for fallback/tests, remote for Atlas. */
@@ -183,4 +210,6 @@ export interface TripDataProvider {
   searchAlternatives(tripId: string): Promise<FlightOption[]>;
   /** Verify the selected offer's fare; the engine never assumes success. */
   verifyOffer(option: FlightOption): Promise<OfferVerification>;
+  /** Confirm an already-reported fare increase after explicit passenger approval. */
+  confirmPrice?(verification: OfferVerification): Promise<OfferVerification>;
 }

@@ -100,11 +100,12 @@ function scoreOption(
             : `Baggage ${option.baggageKg}kg is below the ${intent.minBaggageKg}kg minimum`,
         }
       : {
-          // Atlas search results carry no allowance weight — report it as
-          // informational instead of inventing a number or rejecting.
+          // Atlas search results carry no allowance weight. Keep the option
+          // provisionally eligible, but make it explicit that the hard baggage
+          // requirement must be confirmed through Atlas before recovery.
           kind: "BAGGAGE",
           label: "Baggage",
-          detail: "Allowance unknown — not evaluated from search result",
+          detail: `Pending Atlas verification · must confirm ≥ ${intent.minBaggageKg}kg`,
           passed: true,
           hard: false,
         },
