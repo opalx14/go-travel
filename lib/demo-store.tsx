@@ -40,6 +40,7 @@ import {
 } from "./recovery-engine";
 
 export type DemoPhase = "idle" | "disrupted" | "running" | "complete";
+export type EvidenceView = "issue" | "goal";
 
 /** A trip always starts unprotected; the passenger opts in with one click. */
 export const INITIAL_IS_PROTECTED = false;
@@ -113,6 +114,8 @@ interface DemoStore {
   intentMatchedFields: IntentField[];
   intentSource: IntentExtractionSource | null;
   persistenceStatus: PersistenceStatus;
+  evidenceView: EvidenceView;
+  setEvidenceView: (view: EvidenceView) => void;
   setAutopilot: (enabled: boolean) => void;
   setMaxExtraSpend: (usd: number) => void;
   protectTrip: (brief: string) => Promise<void>;
@@ -153,6 +156,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     needsApproval: 0,
   });
   const [persistenceStatus, setPersistenceStatus] = useState<PersistenceStatus>("loading");
+  const [evidenceView, setEvidenceView] = useState<EvidenceView>("issue");
 
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -389,6 +393,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     setExceptions([]);
     setIsProtected(false);
     setStats({ exceptions: 0, autoResolved: 0, needsApproval: 0 });
+    setEvidenceView("issue");
   }, [clearTimers]);
 
   /** Replay only the steps appended by an approval/decline decision. */
@@ -475,6 +480,8 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       intentMatchedFields,
       intentSource,
       persistenceStatus,
+      evidenceView,
+      setEvidenceView,
       setAutopilot,
       setMaxExtraSpend,
       protectTrip,
@@ -497,6 +504,8 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       intentMatchedFields,
       intentSource,
       persistenceStatus,
+      evidenceView,
+      setEvidenceView,
       setAutopilot,
       setMaxExtraSpend,
       protectTrip,

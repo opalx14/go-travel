@@ -51,7 +51,7 @@ export function ActionZone() {
 
   if (phase === "disrupted") {
     return (
-      <section className="disruption-card overflow-hidden rounded-3xl border border-rose-200/80 bg-card shadow-[0_22px_60px_rgba(190,24,93,0.10)] dark:border-rose-400/35 dark:shadow-[0_22px_60px_rgba(244,63,94,0.08)]">
+      <section className="ti-surface disruption-card overflow-hidden rounded-2xl border-rose-500/25">
         <div className="relative px-6 py-8 text-center sm:px-8 sm:py-9">
           <div className="pointer-events-none absolute inset-x-10 top-0 h-px animate-disruption-scan bg-gradient-to-r from-transparent via-rose-400/70 to-transparent" />
 
@@ -68,18 +68,18 @@ export function ActionZone() {
           </div>
 
           <div className="mt-7 grid items-center gap-3 sm:grid-cols-[1fr_auto_1fr] sm:gap-5">
-            <div className="choreo-reveal choreo-delay-3 rounded-2xl border border-border/70 bg-background/75 px-4 py-3 text-center sm:text-right">
+            <div className="ti-surface-subtle choreo-reveal choreo-delay-3 rounded-xl px-4 py-3 text-center sm:text-right">
               <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.12em]">Original</p>
               <p className="mt-1 font-mono text-lg font-medium tabular-nums text-muted-foreground line-through decoration-rose-300 decoration-2">
                 {SCHEDULE_CHANGE_EVENT.originalDeparture} → {SCHEDULE_CHANGE_EVENT.originalArrival}
               </p>
             </div>
 
-            <span className="choreo-reveal choreo-delay-4 mx-auto flex size-8 items-center justify-center rounded-full border bg-background text-rose-500 shadow-sm">
+            <span className="ti-control choreo-reveal choreo-delay-4 mx-auto flex size-8 items-center justify-center rounded-full text-rose-400">
               <ArrowRight className="size-3.5" />
             </span>
 
-            <div className="choreo-reveal choreo-delay-5 rounded-2xl border border-rose-200/80 bg-rose-500/5 px-4 py-3 text-center dark:border-rose-400/30 sm:text-left">
+            <div className="ti-status-danger choreo-reveal choreo-delay-5 rounded-xl border px-4 py-3 text-center sm:text-left">
               <p className="text-[11px] font-medium text-rose-600 uppercase tracking-[0.12em]">Changed</p>
               <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-rose-700 dark:text-rose-300">
                 {SCHEDULE_CHANGE_EVENT.newDeparture} → {SCHEDULE_CHANGE_EVENT.newArrival}
@@ -87,7 +87,7 @@ export function ActionZone() {
             </div>
           </div>
 
-          <div className="choreo-reveal choreo-delay-6 mx-auto mt-5 max-w-md rounded-2xl bg-rose-600/[0.06] px-4 py-3">
+          <div className="ti-surface-subtle choreo-reveal choreo-delay-6 mx-auto mt-5 max-w-md rounded-xl px-4 py-3">
             <p className="text-sm text-muted-foreground">
               Arrival goal <span className="font-mono font-medium text-foreground">{intent.latestArrival}</span>
               <span className="mx-2 text-muted-foreground/45">•</span>
@@ -123,8 +123,8 @@ export function ActionZone() {
         toMinutes(selected.arrival) <= toMinutes(intent.latestArrival);
 
       return (
-        <section className="animate-in fade-in overflow-hidden rounded-3xl border border-emerald-500/30 bg-card shadow-[0_24px_70px_rgba(16,185,129,0.12)] duration-500">
-          <div className="border-b border-emerald-500/20 bg-emerald-500/5 px-6 py-5 text-center dark:border-emerald-400/20 sm:px-8">
+        <section className="ti-surface animate-in fade-in overflow-hidden rounded-2xl border-emerald-500/25 duration-500">
+          <div className="border-b ti-divider bg-emerald-500/[0.035] px-6 py-5 text-center sm:px-8">
             <p className="flex items-center justify-center gap-2 text-lg font-bold text-emerald-700 dark:text-emerald-300">
               <ShieldCheck className="size-5 text-emerald-500" />
               Verified Recovery Ready
@@ -159,7 +159,7 @@ export function ActionZone() {
               </span>
             </div>
 
-            <div className="border-t px-6 py-6 sm:border-t-0 sm:px-8 bg-emerald-500/[0.03]">
+            <div className="border-t ti-divider bg-emerald-500/[0.025] px-6 py-6 sm:border-t-0 sm:px-8">
               <div className="flex items-center justify-between gap-3">
                 <p className="label-caps font-bold text-emerald-600">Best Recovery Flight</p>
                 <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
@@ -201,7 +201,7 @@ export function ActionZone() {
             </div>
           </div>
 
-          <div className="border-t border-emerald-500/15 bg-muted/20 px-6 py-3.5 text-center text-xs text-muted-foreground sm:px-8">
+          <div className="border-t ti-divider bg-white/[0.018] px-6 py-3.5 text-center text-xs text-muted-foreground sm:px-8">
             Verified recovery is ready for the next booking step · Monitored by TripIntent.
           </div>
         </section>
@@ -212,7 +212,7 @@ export function ActionZone() {
       if (outcome.approval === "PRICE_INCREASED") {
         const verification = outcome.verification;
         return (
-          <div className="animate-in fade-in flex flex-col items-center gap-1.5 rounded-3xl border bg-card px-6 py-7 text-center shadow-[0_18px_50px_rgba(39,53,86,0.08)] duration-500">
+          <div className="ti-surface animate-in fade-in flex flex-col items-center gap-1.5 rounded-2xl px-6 py-7 text-center duration-500">
             <p className="flex items-center gap-2 text-lg font-semibold text-amber-700">
               <UserCheck className="size-5" />
               Price changed — approval required
@@ -244,7 +244,7 @@ export function ActionZone() {
 
       const shortfall = authorityShortfall(outcome, intent);
       return (
-        <div className="animate-in fade-in flex flex-col items-center gap-1.5 rounded-3xl border bg-card px-6 py-7 text-center shadow-[0_18px_50px_rgba(39,53,86,0.08)] duration-500">
+        <div className="ti-surface animate-in fade-in flex flex-col items-center gap-1.5 rounded-2xl px-6 py-7 text-center duration-500">
           <p className="flex items-center gap-2 text-lg font-semibold text-amber-700">
             <UserCheck className="size-5" />
             Approval needed
@@ -274,7 +274,7 @@ export function ActionZone() {
 
     if (outcome.status === "DECLINED") {
       return (
-        <div className="animate-in fade-in flex flex-col items-center gap-1.5 rounded-3xl border bg-card py-7 text-center duration-500">
+        <div className="ti-surface animate-in fade-in flex flex-col items-center gap-1.5 rounded-2xl py-7 text-center duration-500">
           <p className="text-lg font-semibold">Current trip kept</p>
           <p className="text-sm text-muted-foreground">
             No booking change was made.
@@ -285,7 +285,7 @@ export function ActionZone() {
 
     const failureDetail = outcome.steps.at(-1)?.detail;
     return (
-      <div className="animate-in fade-in flex flex-col items-center gap-1.5 rounded-3xl border bg-card py-7 text-center duration-500">
+      <div className="ti-surface animate-in fade-in flex flex-col items-center gap-1.5 rounded-2xl py-7 text-center duration-500">
         <p className="flex items-center gap-2 text-lg font-semibold text-rose-700">
           <SearchX className="size-5" />
           Recovery unavailable
@@ -319,7 +319,7 @@ export function ActionZone() {
   }
 
   return (
-    <div className="animate-in fade-in overflow-hidden rounded-3xl border bg-card shadow-[0_16px_44px_rgba(27,42,73,0.06)] duration-700">
+    <div className="ti-surface animate-in fade-in overflow-hidden rounded-2xl duration-700">
       <div className="px-5 py-5 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -340,12 +340,12 @@ export function ActionZone() {
           </span>
         </div>
 
-        <div className="relative mt-5 h-16 overflow-hidden rounded-2xl border bg-background/70">
+        <div className="ti-surface-subtle relative mt-5 h-16 overflow-hidden rounded-xl">
           <div className="absolute inset-0 monitoring-grid opacity-55" />
           <div className="absolute inset-x-5 top-1/2 border-t border-dashed border-primary/20" />
           <span className="absolute left-5 top-1/2 size-2 -translate-y-1/2 rounded-full bg-primary/30 ring-4 ring-primary/5" />
           <span className="absolute right-5 top-1/2 size-2 -translate-y-1/2 rounded-full bg-primary ring-4 ring-primary/8" />
-          <span className="animate-monitor-plane absolute top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-full border bg-background text-primary shadow-md">
+          <span className="ti-control animate-monitor-plane absolute top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-primary">
             <Plane className="size-3.5" fill="currentColor" />
           </span>
           <span className="animate-monitor-sweep pointer-events-none absolute inset-y-0 w-24 bg-gradient-to-r from-transparent via-primary/10 to-transparent blur-sm" />

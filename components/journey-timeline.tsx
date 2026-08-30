@@ -43,7 +43,7 @@ function TimelineNode({
   return (
     <span
       className={cn(
-        "relative z-10 hidden size-10 shrink-0 items-center justify-center rounded-full border bg-background shadow-md transition-all duration-500 sm:flex",
+        "ti-surface relative z-10 hidden size-10 shrink-0 items-center justify-center rounded-full transition-all duration-500 sm:flex",
         state === "done" && "border-emerald-300 text-emerald-600 bg-emerald-500/5 ring-4 ring-emerald-500/10",
         state === "active" && "border-primary/40 text-primary ring-4 ring-primary/10 shadow-primary/10",
         state === "danger" && "border-rose-300 text-rose-600 ring-4 ring-rose-500/15 bg-rose-500/5",
@@ -290,7 +290,7 @@ function RouteHero() {
   );
 }
 
-export function JourneyTimeline() {
+export function JourneyTimeline({ showHero = false }: { showHero?: boolean }) {
   const { phase, isProtected, playedSteps, outcome, resetDemo } = useDemo();
   const watchRef = useRef<HTMLDivElement>(null);
   const recoveryRef = useRef<HTMLDivElement>(null);
@@ -345,14 +345,16 @@ export function JourneyTimeline() {
 
   return (
     <div className="space-y-6">
-      <div className="animate-in fade-in zoom-in-95 duration-500">
-        <RouteHero />
-      </div>
+      {showHero && (
+        <div className="animate-in fade-in zoom-in-95 duration-500">
+          <RouteHero />
+        </div>
+      )}
 
       {/* TIMELINE SECTION */}
       <section className="relative">
         {/* Continuous Flowing Rail */}
-        <div className="absolute bottom-10 left-[19px] top-4 hidden w-0.5 overflow-hidden bg-gradient-to-b from-emerald-300 via-border to-primary/30 sm:block">
+        <div className="absolute bottom-10 left-[19px] top-4 hidden w-px overflow-hidden bg-gradient-to-b from-emerald-400/40 via-white/10 to-sky-400/30 sm:block">
           {isProtected && (
             <span className="absolute inset-x-0 top-0 h-32 animate-timeline-flow bg-gradient-to-b from-transparent via-primary/60 to-transparent" />
           )}
@@ -414,7 +416,7 @@ export function JourneyTimeline() {
                 {!disrupted || phase === "disrupted" ? (
                   <ActionZone />
                 ) : (
-                  <div className="rounded-2xl border border-rose-200 bg-card p-4 shadow-sm dark:border-rose-500/30">
+                  <div className="ti-surface rounded-2xl border-rose-500/20 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="text-sm font-semibold text-rose-700 dark:text-rose-300">
                         Airline schedule disruption detected
@@ -461,7 +463,7 @@ export function JourneyTimeline() {
                 )}
               </div>
               {running && (
-                <div className="mt-3 rounded-2xl border bg-card/80 p-1 shadow-md">
+                <div className="ti-surface mt-3 rounded-2xl p-1">
                   <ActionZone />
                 </div>
               )}
@@ -514,7 +516,7 @@ export function JourneyTimeline() {
           <button
             type="button"
             onClick={resetDemo}
-            className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-card px-5 py-2.5 text-xs font-semibold text-muted-foreground shadow-md transition-all hover:-translate-y-0.5 hover:text-foreground hover:shadow-lg hover:border-primary/40"
+            className="ti-control inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-semibold text-muted-foreground transition-all hover:text-foreground"
           >
             <RotateCcw className="size-3.5" />
             Start new demo session
