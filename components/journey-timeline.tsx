@@ -5,14 +5,18 @@ import {
   BadgeCheck,
   Check,
   CircleDot,
+  Clock,
+  Luggage,
   Plane,
   Radio,
+  RotateCcw,
   ShieldCheck,
   Sparkles,
   TriangleAlert,
-  RotateCcw,
+  Zap,
 } from "lucide-react";
 import { ActionZone } from "@/components/action-zone";
+import { AirportScene } from "@/components/airport-scene";
 import { TravelBrief } from "@/components/travel-brief";
 import { useDemo } from "@/lib/demo-store";
 import { hasReachedStage } from "@/lib/presentation";
@@ -22,6 +26,11 @@ import { cn } from "@/lib/utils";
 const CITY: Record<string, string> = {
   KUL: "Kuala Lumpur",
   SIN: "Singapore",
+};
+
+const AIRPORT_FULL: Record<string, { name: string; terminal: string }> = {
+  KUL: { name: "Kuala Lumpur International Airport", terminal: "Terminal 1 · Pier Alpha" },
+  SIN: { name: "Singapore Changi Airport", terminal: "Terminal 3 · Jewel Concourse" },
 };
 
 function TimelineNode({
@@ -34,15 +43,15 @@ function TimelineNode({
   return (
     <span
       className={cn(
-        "relative z-10 hidden size-9 shrink-0 items-center justify-center rounded-full border bg-background shadow-sm transition-all duration-500 sm:flex",
-        state === "done" && "border-emerald-200 text-emerald-600",
-        state === "active" && "border-primary/30 text-primary ring-4 ring-primary/8",
-        state === "danger" && "border-rose-200 text-rose-600 ring-4 ring-rose-100",
+        "relative z-10 hidden size-10 shrink-0 items-center justify-center rounded-full border bg-background shadow-md transition-all duration-500 sm:flex",
+        state === "done" && "border-emerald-300 text-emerald-600 bg-emerald-500/5 ring-4 ring-emerald-500/10",
+        state === "active" && "border-primary/40 text-primary ring-4 ring-primary/10 shadow-primary/10",
+        state === "danger" && "border-rose-300 text-rose-600 ring-4 ring-rose-500/15 bg-rose-500/5",
         state === "pending" && "border-border text-muted-foreground/45"
       )}
     >
       {state === "active" && (
-        <span className="absolute inset-0 -z-10 animate-ping rounded-full bg-primary/10" />
+        <span className="absolute inset-0 -z-10 animate-ping rounded-full bg-primary/15" />
       )}
       {children}
     </span>
@@ -50,77 +59,231 @@ function TimelineNode({
 }
 
 function RouteHero() {
-  const { trip, intent, phase, outcome, isProtected } = useDemo();
+  const { trip, intent, phase, outcome, isProtected, persistenceStatus } = useDemo();
   const changed = phase !== "idle";
   const ready = outcome?.status === "RECOVERED";
   const moving = isProtected && !ready;
+  const selectedFlight = outcome?.selected;
 
   return (
-    <section className="overflow-hidden rounded-[2rem] border bg-card shadow-[0_24px_70px_rgba(27,42,73,0.08)]">
-      <div className="relative overflow-hidden px-6 py-7 sm:px-9 sm:py-9">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_-20%,color-mix(in_oklch,var(--primary)_14%,transparent),transparent_58%)]" />
+    <section className="overflow-hidden rounded-[2.2rem] border border-border/80 bg-card shadow-[0_30px_90px_rgba(15,23,42,0.12)] dark:shadow-[0_30px_90px_rgba(0,0,0,0.4)]">
+      <div className="relative overflow-hidden p-4 sm:p-7">
+        {/* Ambient Top Background Glow */}
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_-10%,color-mix(in_oklch,var(--primary)_18%,transparent),transparent_65%)]" />
 
-        <div className="relative flex items-start justify-between gap-6">
+        {/* HERO HEADER: Route & Live Status Pill */}
+        <div className="relative flex flex-col justify-between gap-4 border-b border-border/60 pb-5 sm:flex-row sm:items-center">
           <div>
-            <p className="label-caps text-muted-foreground">Protected journey</p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">
-              {CITY[trip.origin] ?? trip.origin} → {CITY[trip.destination] ?? trip.destination}
+            <div className="flex items-center gap-2">
+              <span className="label-caps font-bold tracking-widest text-primary">
+                {isProtected ? "Outcome-Protected Journey" : "Journey Preview"}
+              </span>
+              <span className="h-1 w-1 rounded-full bg-border" />
+              <span className="font-mono text-xs text-muted-foreground">
+                ID: {trip.id}
+              </span>
+            </div>
+            <h1 className="mt-1.5 text-2xl font-bold tracking-[-0.03em] sm:text-3xl text-foreground">
+              {CITY[trip.origin] ?? trip.origin}{" "}
+              <span className="text-primary font-normal">→</span>{" "}
+              {CITY[trip.destination] ?? trip.destination}
             </h1>
-          </div>
-          <span
-            className={cn(
-              "rounded-full border px-3 py-1 text-xs font-medium",
-              ready
-                ? "border-primary/20 bg-primary/5 text-primary"
-                : changed
-                  ? "border-rose-200 bg-rose-50 text-rose-700"
-                  : "border-emerald-200 bg-emerald-50 text-emerald-700"
-            )}
-          >
-            {ready ? "Recovery ready" : changed ? "Action required" : isProtected ? "Monitoring" : "Ready to protect"}
-          </span>
-        </div>
-
-        <div className="relative mt-9 grid grid-cols-[auto_1fr_auto] items-center gap-4 sm:gap-6">
-          <div>
-            <p className="font-mono text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
-              {trip.origin}
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {AIRPORT_FULL[trip.origin]?.terminal} → {AIRPORT_FULL[trip.destination]?.terminal}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">{CITY[trip.origin]}</p>
           </div>
 
-          <div className="relative h-16 min-w-0 overflow-hidden">
-            <div className="absolute inset-x-0 top-1/2 border-t border-dashed border-border" />
-            {moving && (
-              <span className="animate-route-scan absolute top-1/2 h-px w-16 -translate-y-1/2 bg-gradient-to-r from-transparent via-primary/70 to-transparent blur-[0.5px]" />
-            )}
-            <span className="absolute left-0 top-1/2 size-2 -translate-y-1/2 rounded-full bg-primary/25 ring-4 ring-primary/5" />
-            <span className="absolute right-0 top-1/2 size-2 -translate-y-1/2 rounded-full bg-primary ring-4 ring-primary/8" />
+          <div className="flex items-center gap-2">
             <span
               className={cn(
-                "absolute top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full border bg-background text-primary shadow-[0_8px_22px_rgba(27,42,73,0.16)] before:absolute before:-inset-3 before:-z-10 before:rounded-full before:bg-primary/8 before:blur-md",
-                moving ? "animate-plane-shuttle" : ready ? "left-[82%]" : "left-[18%]"
+                "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold shadow-sm transition-all duration-300",
+                ready
+                  ? "border-emerald-300 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-2 ring-emerald-500/20"
+                  : changed
+                    ? "border-rose-300 bg-rose-500/10 text-rose-700 dark:text-rose-300 ring-2 ring-rose-500/20"
+                    : isProtected
+                      ? "border-primary/30 bg-primary/5 text-primary ring-2 ring-primary/10"
+                      : "border-border bg-muted/60 text-muted-foreground"
               )}
             >
-              <Plane className="size-4" fill="currentColor" />
+              {ready ? (
+                <>
+                  <Sparkles className="size-3.5 text-emerald-500" />
+                  <span>Recovery Secured · Gate A18 Docked</span>
+                </>
+              ) : changed ? (
+                <>
+                  <TriangleAlert className="size-3.5 animate-pulse text-rose-500" />
+                  <span>Schedule Disrupted · Action Required</span>
+                </>
+              ) : isProtected ? (
+                <>
+                  <Zap className="size-3.5 text-primary" />
+                  <span>Autonomous Monitoring Live</span>
+                </>
+              ) : (
+                <>
+                  <CircleDot className="size-3.5" />
+                  <span>Not protected yet</span>
+                </>
+              )}
+            </span>
+          </div>
+        </div>
+
+        {/* 2D AIRPORT OPERATIONS MAP */}
+        <div className="relative mt-5">
+          <AirportScene
+            origin={trip.origin}
+            destination={trip.destination}
+            moving={moving}
+            disrupted={changed && !ready}
+            recovered={ready}
+            flight={trip}
+            disruptedFlight={{
+              departure: SCHEDULE_CHANGE_EVENT.newDeparture,
+              arrival: SCHEDULE_CHANGE_EVENT.newArrival,
+            }}
+            recoveredFlight={selectedFlight}
+            phase={phase}
+            isProtected={isProtected}
+            intent={intent}
+          />
+        </div>
+
+        {/* INTERACTIVE FLIGHT SCHEDULE & TIMETABLE COMPARISON */}
+        <div className="relative mt-5 rounded-2xl border border-border/70 bg-background/70 p-4 shadow-sm backdrop-blur-md">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-6">
+            {/* Origin Card */}
+            <div className="flex items-center gap-3">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary font-mono text-base font-bold">
+                {trip.origin}
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-foreground">
+                  {CITY[trip.origin]} · {AIRPORT_FULL[trip.origin]?.name}
+                </p>
+                <div className="mt-1 flex items-center gap-2 font-mono text-sm">
+                  {changed && !ready ? (
+                    <>
+                      <span className="line-through text-muted-foreground">
+                        {trip.departure}
+                      </span>
+                      <span className="text-rose-600 font-bold dark:text-rose-400">
+                        {SCHEDULE_CHANGE_EVENT.newDeparture}
+                      </span>
+                    </>
+                  ) : ready && selectedFlight ? (
+                    <>
+                      <span className="line-through text-muted-foreground">
+                        {trip.departure}
+                      </span>
+                      <span className="text-emerald-600 font-bold dark:text-emerald-400">
+                        {selectedFlight.departure}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="font-bold text-foreground">
+                      {trip.departure}
+                    </span>
+                  )}
+                  <span className="rounded-md bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold text-primary">
+                    Gate {ready ? "A18" : "A12"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Middle Flight Path Arc */}
+            <div className="flex flex-col items-center justify-center px-2">
+              <span className="text-[10px] font-mono font-medium text-muted-foreground uppercase">
+                {ready
+                  ? `${selectedFlight?.airline ?? "Atlas Verified"} · ${selectedFlight?.flightNo ?? "CA 88"}`
+                  : changed
+                    ? `${trip.airline} · ${trip.flightNo} (Delayed)`
+                    : `${trip.airline} · ${trip.flightNo}`}
+              </span>
+              <div className="mt-1 flex items-center gap-2 text-primary">
+                <span className="h-0.5 w-10 sm:w-16 bg-primary/40 rounded-full" />
+                <span className="flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                  <Plane className="size-3.5 rotate-45" fill="currentColor" />
+                </span>
+                <span className="h-0.5 w-10 sm:w-16 bg-primary/40 rounded-full" />
+              </div>
+              <span className="mt-1 text-[10px] text-muted-foreground">
+                Nonstop · 1h 10m
+              </span>
+            </div>
+
+            {/* Destination Card */}
+            <div className="flex items-center justify-start sm:justify-end gap-3 text-left sm:text-right">
+              <div>
+                <p className="text-xs font-semibold text-foreground">
+                  {CITY[trip.destination]} · {AIRPORT_FULL[trip.destination]?.name}
+                </p>
+                <div className="mt-1 flex items-center justify-start sm:justify-end gap-2 font-mono text-sm">
+                  {changed && !ready ? (
+                    <>
+                      <span className="line-through text-muted-foreground">
+                        {trip.arrival}
+                      </span>
+                      <span className="text-rose-600 font-bold dark:text-rose-400">
+                        {SCHEDULE_CHANGE_EVENT.newArrival} ❌
+                      </span>
+                    </>
+                  ) : ready && selectedFlight ? (
+                    <>
+                      <span className="line-through text-muted-foreground">
+                        {trip.arrival}
+                      </span>
+                      <span className="text-emerald-600 font-bold dark:text-emerald-400">
+                        {selectedFlight.arrival} ✅
+                      </span>
+                    </>
+                  ) : (
+                    <span className="font-bold text-foreground">
+                      {trip.arrival}
+                    </span>
+                  )}
+                  <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                    T3 Jewel
+                  </span>
+                </div>
+              </div>
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary font-mono text-base font-bold">
+                {trip.destination}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* INTENT CONTRACT & POLICY CHIPS */}
+        <div className="relative mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-4 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-full border bg-background px-2.5 py-1 font-mono text-[11px] text-foreground">
+              <Clock className="size-3 text-primary" /> Must arrive by {intent.latestArrival}
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full border bg-background px-2.5 py-1 font-mono text-[11px] text-foreground">
+              <Luggage className="size-3 text-primary" /> {intent.minBaggageKg} kg checked bag
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full border bg-background px-2.5 py-1 font-mono text-[11px] text-foreground">
+              <ShieldCheck className="size-3 text-emerald-600" /> Autopilot ≤ ${intent.maxExtraSpendUsd}
             </span>
           </div>
 
-          <div className="text-right">
-            <p className="font-mono text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
-              {trip.destination}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">{CITY[trip.destination]}</p>
+          <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] text-muted-foreground">
+            <span>Airport map positions are simulated</span>
+            <span className="hidden sm:inline">·</span>
+            <span>
+              {persistenceStatus === "loading"
+                ? "Loading saved trip…"
+                : persistenceStatus === "saving"
+                  ? "Saving on this device…"
+                  : persistenceStatus === "error"
+                    ? "Device save unavailable"
+                    : "Trip saved on this device"}
+            </span>
           </div>
-        </div>
-
-        <div className="relative mt-7 flex flex-wrap items-center gap-x-5 gap-y-2 border-t pt-5 text-sm text-muted-foreground">
-          <span className="font-mono tabular-nums text-foreground">
-            {changed ? SCHEDULE_CHANGE_EVENT.newDeparture : trip.departure} → {changed ? SCHEDULE_CHANGE_EVENT.newArrival : trip.arrival}
-          </span>
-          <span>Arrive by {intent.latestArrival}</span>
-          <span>{intent.minBaggageKg} kg baggage</span>
-          <span>Autopilot {intent.autopilot ? "on" : "off"}</span>
         </div>
       </div>
     </section>
@@ -181,76 +344,36 @@ export function JourneyTimeline() {
   }, [completed, isProtected, outcome?.status, phase, running, searched]);
 
   return (
-    <div>
-      {!isProtected ? (
-        <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-          <div className="hidden mb-7 text-center sm:block">
-            <h1 className="text-4xl font-semibold tracking-[-0.04em]">
-              Book the outcome, not the flight.
-            </h1>
-            <p className="mx-auto mt-3 max-w-lg text-base text-muted-foreground">
-              Tell TripIntent what must happen.
-            </p>
-            <p className="mx-auto mt-4 inline-block rounded-full bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">
-              Alibaba Cloud × Atlas × Qoder · Hackathon 2026
-            </p>
-          </div>
+    <div className="space-y-6">
+      <div className="animate-in fade-in zoom-in-95 duration-500">
+        <RouteHero />
+      </div>
 
-          <div className="flex min-h-[calc(100svh-13.5rem)] items-center justify-center px-6 pb-16 text-center sm:hidden">
-            <div className="max-w-xs">
-              <span className="mx-auto flex size-12 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary shadow-sm">
-                <Sparkles className="size-5" />
-              </span>
-              <h1 className="mt-5 text-2xl font-semibold tracking-[-0.035em]">
-                Where do you need to be?
-              </h1>
-              <p className="mx-auto mt-2 max-w-[17rem] text-sm leading-relaxed text-muted-foreground">
-                Tell me the outcome. I’ll handle the trip.
-              </p>
-
-              <div className="relative mx-auto mt-8 h-16 w-full max-w-[17rem] overflow-hidden">
-                <div className="absolute inset-x-3 top-1/2 border-t border-dashed border-primary/20" />
-                <span className="absolute left-3 top-1/2 size-2 -translate-y-1/2 rounded-full bg-primary/30 ring-4 ring-primary/5" />
-                <span className="absolute right-3 top-1/2 size-2 -translate-y-1/2 rounded-full bg-primary ring-4 ring-primary/10" />
-                <span className="animate-monitor-plane absolute top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full border bg-background text-primary shadow-md">
-                  <Plane className="size-4" fill="currentColor" />
-                </span>
-                <div className="absolute inset-x-3 bottom-0 flex justify-between font-mono text-[9px] tracking-[0.12em] text-muted-foreground/70">
-                  <span>KUL</span>
-                  <span>SIN</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="animate-in fade-in zoom-in-95 duration-500">
-          <RouteHero />
-        </div>
-      )}
-
-      <section className={cn("relative", isProtected ? "mt-6 sm:mt-8" : "mt-4 sm:mt-7")}>
-        <div className="absolute bottom-10 left-[17px] top-4 hidden w-px overflow-hidden bg-gradient-to-b from-emerald-200 via-border to-primary/20 sm:block">
+      {/* TIMELINE SECTION */}
+      <section className="relative">
+        {/* Continuous Flowing Rail */}
+        <div className="absolute bottom-10 left-[19px] top-4 hidden w-0.5 overflow-hidden bg-gradient-to-b from-emerald-300 via-border to-primary/30 sm:block">
           {isProtected && (
-            <span className="absolute inset-x-0 top-0 h-24 animate-timeline-flow bg-gradient-to-b from-transparent via-primary/45 to-transparent" />
+            <span className="absolute inset-x-0 top-0 h-32 animate-timeline-flow bg-gradient-to-b from-transparent via-primary/60 to-transparent" />
           )}
         </div>
 
-        <div className="relative grid grid-cols-1 pb-0 sm:grid-cols-[36px_1fr] sm:gap-x-5 sm:pb-7">
+        {/* STEP 1: Define Outcome */}
+        <div className="relative grid grid-cols-1 pb-0 sm:grid-cols-[40px_1fr] sm:gap-x-5 sm:pb-7">
           <TimelineNode state={isProtected ? "done" : "active"}>
-            {isProtected ? <ShieldCheck className="size-4" /> : <CircleDot className="size-4" />}
+            {isProtected ? <ShieldCheck className="size-4.5" /> : <CircleDot className="size-4.5" />}
           </TimelineNode>
           <div className="min-w-0 pt-1">
             <div className="hidden flex-wrap items-center justify-between gap-2 sm:flex">
               <div>
-                <p className="text-sm font-semibold">1. Define the outcome</p>
+                <p className="text-sm font-bold text-foreground">1. Define the outcome</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   TripIntent protects what matters, not a specific flight number.
                 </p>
               </div>
               {isProtected && (
-                <span className="flex items-center gap-1 text-xs font-medium text-emerald-700">
-                  <Check className="size-3.5" /> Protected
+                <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                  <Check className="size-3.5" /> Outcome Protected
                 </span>
               )}
             </div>
@@ -260,26 +383,27 @@ export function JourneyTimeline() {
           </div>
         </div>
 
+        {/* STEP 2: Watch Journey */}
         {isProtected && (
           <div
             ref={watchRef}
-            className="animate-in fade-in slide-in-from-bottom-3 relative grid scroll-mt-24 grid-cols-1 pb-6 duration-500 sm:grid-cols-[36px_1fr] sm:gap-x-5 sm:pb-7"
+            className="animate-in fade-in slide-in-from-bottom-3 relative grid scroll-mt-24 grid-cols-1 pb-6 duration-500 sm:grid-cols-[40px_1fr] sm:gap-x-5 sm:pb-7"
           >
             <TimelineNode state={disrupted ? "danger" : "active"}>
-              {disrupted ? <TriangleAlert className="size-4" /> : <Radio className="size-4" />}
+              {disrupted ? <TriangleAlert className="size-4.5" /> : <Radio className="size-4.5" />}
             </TimelineNode>
             <div className="min-w-0 pt-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <p className="text-sm font-semibold">2. Watch the journey</p>
+                  <p className="text-sm font-bold text-foreground">2. Watch the journey</p>
                   <p className="mt-0.5 hidden text-xs text-muted-foreground sm:block">
                     Airline changes are monitored against your arrival goal.
                   </p>
                 </div>
                 {!disrupted && (
-                  <span className="flex items-center gap-2 text-xs font-medium text-emerald-700">
+                  <span className="flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                     <span className="relative flex size-2">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-50" />
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
                       <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
                     </span>
                     Monitoring active
@@ -290,17 +414,19 @@ export function JourneyTimeline() {
                 {!disrupted || phase === "disrupted" ? (
                   <ActionZone />
                 ) : (
-                  <div className="rounded-2xl border border-rose-200 bg-card px-4 py-3.5 dark:border-rose-500/30">
+                  <div className="rounded-2xl border border-rose-200 bg-card p-4 shadow-sm dark:border-rose-500/30">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-sm font-medium text-rose-700 dark:text-rose-300">
-                        Airline update received
+                      <p className="text-sm font-semibold text-rose-700 dark:text-rose-300">
+                        Airline schedule disruption detected
                       </p>
-                      <span className="label-caps text-rose-600 dark:text-rose-400">Schedule changed</span>
+                      <span className="label-caps font-bold text-rose-600 dark:text-rose-400">
+                        Arrival Goal Violated
+                      </span>
                     </div>
                     <p className="mt-1.5 font-mono text-sm tabular-nums text-foreground">
                       {SCHEDULE_CHANGE_EVENT.originalDeparture} → {SCHEDULE_CHANGE_EVENT.originalArrival}
                       <span className="mx-2 text-muted-foreground">⇒</span>
-                      <span className="text-rose-700 dark:text-rose-300">
+                      <span className="text-rose-600 dark:text-rose-300 font-bold">
                         {SCHEDULE_CHANGE_EVENT.newDeparture} → {SCHEDULE_CHANGE_EVENT.newArrival}
                       </span>
                     </p>
@@ -311,28 +437,31 @@ export function JourneyTimeline() {
           </div>
         )}
 
+        {/* STEP 3: Recover with Atlas */}
         {disrupted && (
           <div
             ref={recoveryRef}
-            className="animate-in fade-in slide-in-from-bottom-3 relative grid scroll-mt-24 grid-cols-1 pb-6 duration-500 sm:grid-cols-[36px_1fr] sm:gap-x-5 sm:pb-7"
+            className="animate-in fade-in slide-in-from-bottom-3 relative grid scroll-mt-24 grid-cols-1 pb-6 duration-500 sm:grid-cols-[40px_1fr] sm:gap-x-5 sm:pb-7"
           >
             <TimelineNode state={searched ? "done" : "active"}>
-              <Sparkles className="size-4" />
+              <Sparkles className="size-4.5" />
             </TimelineNode>
             <div className="min-w-0 pt-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <p className="text-sm font-semibold">3. Recover with Atlas</p>
+                  <p className="text-sm font-bold text-foreground">3. Recover with Atlas Sandbox</p>
                   <p className="mt-0.5 hidden text-xs text-muted-foreground sm:block">
-                    Search real alternatives, filter them by intent, then verify the chosen fare.
+                    Search real alternatives, score them against intent, and verify the chosen fare.
                   </p>
                 </div>
                 {searched && (
-                  <span className="text-xs font-medium text-primary">Atlas search complete</span>
+                  <span className="text-xs font-semibold text-primary">
+                    Atlas verification complete
+                  </span>
                 )}
               </div>
               {running && (
-                <div className="mt-3 rounded-2xl border bg-card/70 p-1 shadow-sm">
+                <div className="mt-3 rounded-2xl border bg-card/80 p-1 shadow-md">
                   <ActionZone />
                 </div>
               )}
@@ -340,10 +469,11 @@ export function JourneyTimeline() {
           </div>
         )}
 
+        {/* STEP 4: Present Recovery */}
         {completed && (
           <div
             ref={resultRef}
-            className="animate-in fade-in slide-in-from-bottom-4 relative grid scroll-mt-24 grid-cols-1 duration-700 sm:grid-cols-[36px_1fr] sm:gap-x-5"
+            className="animate-in fade-in slide-in-from-bottom-4 relative grid scroll-mt-24 grid-cols-1 duration-700 sm:grid-cols-[40px_1fr] sm:gap-x-5"
           >
             <TimelineNode
               state={
@@ -354,19 +484,19 @@ export function JourneyTimeline() {
                     : "done"
               }
             >
-              {verified ? <BadgeCheck className="size-4" /> : <CircleDot className="size-4" />}
+              {verified ? <BadgeCheck className="size-4.5" /> : <CircleDot className="size-4.5" />}
             </TimelineNode>
             <div className="min-w-0 pt-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <p className="text-sm font-semibold">4. Present the recovery</p>
+                  <p className="text-sm font-bold text-foreground">4. Present the verified recovery</p>
                   <p className="mt-0.5 hidden text-xs text-muted-foreground sm:block">
-                    The passenger sees one clear next step instead of another search problem.
+                    The passenger sees one clear verified recovery option ready for the next booking step.
                   </p>
                 </div>
                 {outcome?.status === "RECOVERED" && (
-                  <span className="flex items-center gap-1 text-xs font-medium text-emerald-700">
-                    <Check className="size-3.5" /> Fare verified
+                  <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    <Check className="size-3.5" /> Fare Verified via Atlas
                   </span>
                 )}
               </div>
@@ -378,15 +508,16 @@ export function JourneyTimeline() {
         )}
       </section>
 
+      {/* START OVER BUTTON */}
       {completed && (
         <div className="animate-in fade-in mt-8 flex justify-center duration-500">
           <button
             type="button"
             onClick={resetDemo}
-            className="inline-flex items-center gap-2 rounded-full border bg-card px-4 py-2 text-xs font-medium text-muted-foreground shadow-sm transition hover:-translate-y-0.5 hover:text-foreground hover:shadow-md"
+            className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-card px-5 py-2.5 text-xs font-semibold text-muted-foreground shadow-md transition-all hover:-translate-y-0.5 hover:text-foreground hover:shadow-lg hover:border-primary/40"
           >
             <RotateCcw className="size-3.5" />
-            Start over
+            Start new demo session
           </button>
         </div>
       )}

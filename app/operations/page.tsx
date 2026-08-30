@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { Database } from "lucide-react";
 import { AgentConsole } from "@/components/agent-console";
 import { CaseCard } from "@/components/case-card";
 import { DecisionTrace } from "@/components/decision-trace";
@@ -16,9 +18,17 @@ export default function OperationsPage() {
             Every disruption becomes a case with a full decision record.
           </p>
         </div>
-        <span className="label-caps rounded-full border border-border/80 bg-card px-2.5 py-1 text-muted-foreground">
-          Single-tenant sandbox
-        </span>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/operations/storage"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-card px-2.5 py-1 text-[10px] font-semibold text-muted-foreground transition hover:text-foreground"
+          >
+            <Database className="size-3" /> SQLite storage
+          </Link>
+          <span className="label-caps rounded-full border border-border/80 bg-card px-2.5 py-1 text-muted-foreground">
+            Single-tenant sandbox
+          </span>
+        </div>
       </div>
 
       <div className="mt-8">

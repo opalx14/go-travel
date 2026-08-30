@@ -28,6 +28,10 @@ import {
   ORIGINAL_FLIGHT,
   SCHEDULE_CHANGE_EVENT,
 } from "./scenario";
+import type {
+  DeviceJourneyResponse,
+  DeviceJourneySnapshot,
+} from "./device-state";
 import { remoteAtlas } from "./atlas/remote-provider";
 import {
   approveRecovery as executeApproval,
@@ -56,6 +60,8 @@ export interface OpsStats {
   autoResolved: number;
   needsApproval: number;
 }
+
+export type PersistenceStatus = "loading" | "saving" | "saved" | "error";
 
 interface IntentParseResponse extends ParsedTravelBrief {
   ok: boolean;
@@ -106,6 +112,7 @@ interface DemoStore {
   stats: OpsStats;
   intentMatchedFields: IntentField[];
   intentSource: IntentExtractionSource | null;
+  persistenceStatus: PersistenceStatus;
   setAutopilot: (enabled: boolean) => void;
   setMaxExtraSpend: (usd: number) => void;
   protectTrip: (brief: string) => Promise<void>;
@@ -145,8 +152,11 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     autoResolved: 0,
     needsApproval: 0,
   });
+  const [persistenceStatus, setPersistenceStatus] = useState<PersistenceStatus>("loading");
 
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const persistenceHydratedRef = useRef(false);
   /**
    * Run-generation guard: any in-flight await captures its generation, and
    * bails when a newer generation exists (Reset while a run is pending).
@@ -159,6 +169,94 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => clearTimers, [clearTimers]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function restoreDeviceJourney() {
+      try {
+        const response = await fetch("/api/device-state", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error("Device state unavailable");
+
+        const payload = (await response.json()) as DeviceJourneyResponse;
+        if (payload.snapshot) {
+          const snapshot = payload.snapshot;
+          setTrip(snapshot.trip);
+          setIntent(snapshot.intent);
+          setPhase(snapshot.phase);
+          setPlayedSteps(snapshot.playedSteps);
+          setActiveRun(snapshot.outcome);
+          setOutcome(snapshot.outcome);
+          setIsProtected(snapshot.isProtected);
+          setExceptions(snapshot.exceptions);
+          setStats(snapshot.stats);
+          setIntentMatchedFields(snapshot.intentMatchedFields);
+          setIntentSource(snapshot.intentSource);
+        }
+        setPersistenceStatus("saved");
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") return;
+        setPersistenceStatus("error");
+      } finally {
+        if (!controller.signal.aborted) persistenceHydratedRef.current = true;
+      }
+    }
+
+    void restoreDeviceJourney();
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    if (!persistenceHydratedRef.current || phase === "running") return;
+
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    persistTimerRef.current = setTimeout(() => {
+      const snapshot: DeviceJourneySnapshot = {
+        version: 1,
+        trip,
+        intent,
+        phase,
+        playedSteps,
+        outcome,
+        isProtected,
+        exceptions,
+        stats,
+        intentMatchedFields,
+        intentSource,
+        savedAt: new Date().toISOString(),
+      };
+
+      setPersistenceStatus("saving");
+      void fetch("/api/device-state", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(snapshot),
+      })
+        .then((response) => {
+          if (!response.ok) throw new Error("Device state save failed");
+          setPersistenceStatus("saved");
+        })
+        .catch(() => setPersistenceStatus("error"));
+    }, 350);
+
+    return () => {
+      if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    };
+  }, [
+    exceptions,
+    intent,
+    intentMatchedFields,
+    intentSource,
+    isProtected,
+    outcome,
+    phase,
+    playedSteps,
+    stats,
+    trip,
+  ]);
 
   const protectTrip = useCallback(async (brief: string) => {
     clearTimers();
@@ -376,6 +474,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       stats,
       intentMatchedFields,
       intentSource,
+      persistenceStatus,
       setAutopilot,
       setMaxExtraSpend,
       protectTrip,
@@ -397,6 +496,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       stats,
       intentMatchedFields,
       intentSource,
+      persistenceStatus,
       setAutopilot,
       setMaxExtraSpend,
       protectTrip,

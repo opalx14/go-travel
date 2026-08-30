@@ -123,78 +123,86 @@ export function ActionZone() {
         toMinutes(selected.arrival) <= toMinutes(intent.latestArrival);
 
       return (
-        <section className="animate-in fade-in overflow-hidden rounded-3xl border bg-card shadow-[0_18px_50px_rgba(39,53,86,0.08)] duration-500">
-          <div className="border-b border-emerald-500/15 bg-card px-6 py-5 text-center dark:border-emerald-400/15 sm:px-8">
-            <p className="flex items-center justify-center gap-2 text-lg font-semibold text-emerald-700 dark:text-emerald-400">
-              <ShieldCheck className="size-5" />
-              Recovery ready
+        <section className="animate-in fade-in overflow-hidden rounded-3xl border border-emerald-500/30 bg-card shadow-[0_24px_70px_rgba(16,185,129,0.12)] duration-500">
+          <div className="border-b border-emerald-500/20 bg-emerald-500/5 px-6 py-5 text-center dark:border-emerald-400/20 sm:px-8">
+            <p className="flex items-center justify-center gap-2 text-lg font-bold text-emerald-700 dark:text-emerald-300">
+              <ShieldCheck className="size-5 text-emerald-500" />
+              Verified Recovery Ready
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              TripIntent found a replacement that restores your arrival goal.
+              TripIntent autonomous agent found a verified replacement meeting your {intent.latestArrival} arrival deadline.
             </p>
           </div>
 
           <div className="grid sm:grid-cols-[1fr_auto_1fr]">
-            <div className="px-6 py-6 sm:px-8">
-              <p className="label-caps text-rose-600">Broken itinerary</p>
-              <p className="mt-3 font-mono text-xl font-semibold tabular-nums">
+            <div className="px-6 py-6 sm:px-8 bg-rose-500/[0.02]">
+              <div className="flex items-center justify-between gap-2">
+                <p className="label-caps font-bold text-rose-600">Disrupted Flight</p>
+                <span className="rounded-md bg-rose-500/10 px-2 py-0.5 font-mono text-[10px] text-rose-600 font-bold">
+                  Gate A12 · Delayed
+                </span>
+              </div>
+              <p className="mt-3 font-mono text-xl font-bold tabular-nums text-foreground">
                 {SCHEDULE_CHANGE_EVENT.newDeparture} → {SCHEDULE_CHANGE_EVENT.newArrival}
               </p>
-              <p className="mt-2 text-sm font-medium text-rose-700">
+              <p className="mt-2 text-sm font-semibold text-rose-600 dark:text-rose-400">
                 {lateBy(SCHEDULE_CHANGE_EVENT.newArrival, intent.latestArrival)}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Misses your {intent.latestArrival} arrival goal
+                Misses your {intent.latestArrival} arrival limit
               </p>
             </div>
 
             <div className="hidden items-center justify-center px-2 sm:flex">
-              <span className="flex size-9 items-center justify-center rounded-full border bg-background text-primary shadow-sm">
-                <ArrowRight className="size-4" />
+              <span className="flex size-10 items-center justify-center rounded-full border border-emerald-500/30 bg-background text-emerald-600 shadow-md">
+                <ArrowRight className="size-4.5" />
               </span>
             </div>
 
-            <div className="border-t px-6 py-6 sm:border-t-0 sm:px-8">
+            <div className="border-t px-6 py-6 sm:border-t-0 sm:px-8 bg-emerald-500/[0.03]">
               <div className="flex items-center justify-between gap-3">
-                <p className="label-caps text-primary">Best recovery</p>
-                <span className="font-mono text-xs text-muted-foreground">
-                  {selected.flightNo}
+                <p className="label-caps font-bold text-emerald-600">Best Recovery Flight</p>
+                <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                  Recovery option · Ready
                 </span>
               </div>
-              <p className="mt-3 font-mono text-2xl font-semibold tabular-nums">
+              <p className="mt-3 font-mono text-2xl font-bold tabular-nums text-foreground">
                 {selected.departure} → {selected.arrival}
                 {(selected.arrivalDayOffset ?? 0) > 0
                   ? ` (+${selected.arrivalDayOffset}d)`
                   : ""}
               </p>
-              <p className="mt-2 text-sm font-medium text-emerald-700">
-                {onTime ? `Arrives before ${intent.latestArrival}` : "Matches your trip constraints"}
+              <p className="mt-2 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                {onTime ? `Arrives before ${intent.latestArrival} goal (On-Time)` : "Matches your travel constraints"}
               </p>
-              <p className="mt-1 text-xs text-muted-foreground tabular-nums">
+              <p className="mt-1 text-xs font-mono text-muted-foreground tabular-nums">
+                {selected.airline ?? "Atlas Partner"} · {selected.flightNo} ·{" "}
                 {selected.replacementPriceUsd !== undefined
-                  ? `Replacement $${selected.replacementPriceUsd.toFixed(2)}`
+                  ? `Fare $${selected.replacementPriceUsd.toFixed(2)}`
                   : `+$${selected.extraCostUsd}`}{" "}
-                · baggage {selected.baggageKg !== undefined ? `${selected.baggageKg} kg` : "unknown"}
+                · {selected.baggageKg !== undefined ? `${selected.baggageKg} kg bag` : "Baggage unconfirmed"}
               </p>
               {verification && (
-                <p
-                  className={
-                    fromAtlas
-                      ? "mt-3 flex items-center gap-1.5 text-sm font-medium text-emerald-700"
-                      : "label-caps mt-3 inline-flex rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-700"
-                  }
-                >
-                  {fromAtlas && <Check className="size-3.5" />}
-                  {fromAtlas
-                    ? "Fare verified with Atlas"
-                    : "SIMULATED FALLBACK — Atlas unreachable"}
-                </p>
+                <div className="mt-3.5 flex items-center gap-2">
+                  <span
+                    className={
+                      fromAtlas
+                        ? "inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
+                        : "label-caps inline-flex rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-700"
+                    }
+                  >
+                    {fromAtlas && <Check className="size-3.5" />}
+                    {fromAtlas
+                      ? "Fare Verified via Atlas Sandbox"
+                      : "SIMULATED FALLBACK — Atlas unreachable"}
+                  </span>
+                </div>
               )}
             </div>
           </div>
 
-          <div className="border-t bg-muted/25 px-6 py-3 text-center text-xs text-muted-foreground sm:px-8">
-            Verified recovery only — your existing booking has not been changed yet.
+          <div className="border-t border-emerald-500/15 bg-muted/20 px-6 py-3.5 text-center text-xs text-muted-foreground sm:px-8">
+            Verified recovery is ready for the next booking step · Monitored by TripIntent.
           </div>
         </section>
       );
