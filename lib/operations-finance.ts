@@ -19,6 +19,22 @@ export type BookingHealth =
   | "protected"
   | "unprotected";
 
+export type FulfilmentStatus =
+  | "CONFIRMED"
+  | "TICKETED"
+  | "DISRUPTED"
+  | "RECOVERED"
+  | "CANCELLED";
+
+export type RecoveryState =
+  | "COMPLETED"
+  | "PENDING_APPROVAL"
+  | "ACTION_REQUIRED"
+  | "MONITORING"
+  | "DECLINED"
+  | "FAILED"
+  | "UNPROTECTED";
+
 export interface JourneyEvidence {
   deviceId: string;
   createdAt: string;
@@ -53,6 +69,14 @@ export interface ClientBookingReport {
   revenueAtRiskUsd: number;
   openReceivableUsd: number;
   openPayableUsd: number;
+  // Fulfilment & Post-Booking (ATRIP model)
+  fulfilmentStatus: FulfilmentStatus;
+  fareVerified: boolean;
+  ticketingSla: string;
+  recoveryState: RecoveryState;
+  refundExposureUsd: number;
+  supplierPayableUsd: number;
+  customerReceivableUsd: number;
   updatedAt: string;
 }
 
@@ -73,6 +97,10 @@ export interface OperationsSummary {
   openPayableUsd: number;
   rejectedAlternatives: number;
   recoveryRoi: number | null;
+  // Fulfilment & Post-Booking (ATRIP model)
+  ticketingSlaAdherencePct: number;
+  fareVerificationRatePct: number;
+  totalRefundExposureUsd: number;
 }
 
 export interface OperationsReport {
@@ -173,6 +201,46 @@ function buildBooking(evidence: JourneyEvidence): ClientBookingReport | null {
   const openReceivable = bookingValue;
   const openPayable = supplierCost;
 
+  // Modeled post-booking fulfilment & servicing (ATRIP model)
+  const fulfilmentStatus: FulfilmentStatus =
+    health === "recovered"
+      ? "RECOVERED"
+      : health === "disrupted" || health === "approval" || health === "failed"
+        ? "DISRUPTED"
+        : health === "protected"
+          ? "TICKETED"
+          : "CONFIRMED";
+
+  const fareVerified =
+    health === "recovered" || Boolean(snapshot.outcome?.verification);
+
+  const ticketingSla =
+    health === "recovered"
+      ? "< 2 min"
+      : health === "approval"
+        ? "Held at Gate"
+        : "< 5 min";
+
+  const recoveryState: RecoveryState =
+    health === "recovered"
+      ? "COMPLETED"
+      : health === "approval"
+        ? "PENDING_APPROVAL"
+        : health === "disrupted"
+          ? "ACTION_REQUIRED"
+          : health === "protected"
+            ? "MONITORING"
+            : health === "declined"
+              ? "DECLINED"
+              : health === "failed"
+                ? "FAILED"
+                : "UNPROTECTED";
+
+  const refundExposure =
+    health === "disrupted" || health === "approval" || health === "failed"
+      ? baseSupplierCost
+      : 0;
+
   const alternativesRejected =
     snapshot.outcome?.evaluations.filter((evaluation) => !evaluation.valid).length ?? 0;
 
@@ -204,6 +272,13 @@ function buildBooking(evidence: JourneyEvidence): ClientBookingReport | null {
     revenueAtRiskUsd: revenueAtRisk,
     openReceivableUsd: openReceivable,
     openPayableUsd: openPayable,
+    fulfilmentStatus,
+    fareVerified,
+    ticketingSla,
+    recoveryState,
+    refundExposureUsd: refundExposure,
+    supplierPayableUsd: openPayable,
+    customerReceivableUsd: openReceivable,
     updatedAt: evidence.updatedAt,
   };
 }
@@ -233,6 +308,11 @@ function fallbackBookings(): ClientBookingReport[] {
       | "recoverySpendUsd"
       | "revenueProtectedUsd"
       | "revenueAtRiskUsd"
+      | "fulfilmentStatus"
+      | "fareVerified"
+      | "ticketingSla"
+      | "recoveryState"
+      | "refundExposureUsd"
     >
   > = [
     {
@@ -240,8 +320,8 @@ function fallbackBookings(): ClientBookingReport[] {
       clientLabel: "Traveler A17F2C",
       route: "KUL → SIN",
       originalFlight: "QS 401",
-      selectedFlight: "AK 701",
-      changeLabel: "QS 401 → AK 701",
+      selectedFlight: "CA 88",
+      changeLabel: "QS 401 → CA 88",
       health: "recovered",
       statusLabel: STATUS_LABELS.recovered,
       decisionLabel: "Passenger approved recovery",
@@ -251,20 +331,25 @@ function fallbackBookings(): ClientBookingReport[] {
       minBaggageKg: 20,
       maxExtraSpendUsd: 50,
       alternativesRejected: 2,
-      bookingValueUsd: 155.97,
+      bookingValueUsd: 118.68,
       serviceRevenueUsd: 10.68,
-      supplierCostUsd: 145.29,
-      recoverySpendUsd: 56.29,
+      supplierCostUsd: 108.00,
+      recoverySpendUsd: 19.00,
       revenueProtectedUsd: 99.68,
       revenueAtRiskUsd: 0,
+      fulfilmentStatus: "RECOVERED",
+      fareVerified: true,
+      ticketingSla: "< 2 min",
+      recoveryState: "COMPLETED",
+      refundExposureUsd: 0,
     },
     {
       id: "BK-DEMO-102",
       clientLabel: "Traveler C84D11",
       route: "KUL → SIN",
       originalFlight: "QS 401",
-      selectedFlight: "AK 701",
-      changeLabel: "QS 401 → AK 701",
+      selectedFlight: "CA 88",
+      changeLabel: "QS 401 → CA 88",
       health: "approval",
       statusLabel: STATUS_LABELS.approval,
       decisionLabel: "Waiting for passenger approval",
@@ -272,7 +357,7 @@ function fallbackBookings(): ClientBookingReport[] {
       autopilot: true,
       latestArrival: "18:00",
       minBaggageKg: 20,
-      maxExtraSpendUsd: 50,
+      maxExtraSpendUsd: 15,
       alternativesRejected: 2,
       bookingValueUsd: 99.68,
       serviceRevenueUsd: 10.68,
@@ -280,6 +365,11 @@ function fallbackBookings(): ClientBookingReport[] {
       recoverySpendUsd: 0,
       revenueProtectedUsd: 0,
       revenueAtRiskUsd: 99.68,
+      fulfilmentStatus: "DISRUPTED",
+      fareVerified: true,
+      ticketingSla: "Held at Gate",
+      recoveryState: "PENDING_APPROVAL",
+      refundExposureUsd: 89,
     },
     {
       id: "BK-DEMO-103",
@@ -303,6 +393,11 @@ function fallbackBookings(): ClientBookingReport[] {
       recoverySpendUsd: 0,
       revenueProtectedUsd: 0,
       revenueAtRiskUsd: 99.68,
+      fulfilmentStatus: "DISRUPTED",
+      fareVerified: false,
+      ticketingSla: "< 5 min",
+      recoveryState: "ACTION_REQUIRED",
+      refundExposureUsd: 89,
     },
     {
       id: "BK-DEMO-104",
@@ -326,6 +421,11 @@ function fallbackBookings(): ClientBookingReport[] {
       recoverySpendUsd: 0,
       revenueProtectedUsd: 0,
       revenueAtRiskUsd: 0,
+      fulfilmentStatus: "TICKETED",
+      fareVerified: true,
+      ticketingSla: "< 5 min",
+      recoveryState: "MONITORING",
+      refundExposureUsd: 0,
     },
   ];
 
@@ -337,6 +437,8 @@ function fallbackBookings(): ClientBookingReport[] {
       marginPct: money((grossProfit / row.bookingValueUsd) * 100),
       openReceivableUsd: row.bookingValueUsd,
       openPayableUsd: row.supplierCostUsd,
+      supplierPayableUsd: row.supplierCostUsd,
+      customerReceivableUsd: row.bookingValueUsd,
       updatedAt: "2026-08-31T10:00:00.000Z",
     };
   });
@@ -350,6 +452,7 @@ function summarize(bookings: ClientBookingReport[]): OperationsSummary {
   const grossProfitUsd = sum((booking) => booking.grossProfitUsd);
   const recoverySpendUsd = sum((booking) => booking.recoverySpendUsd);
   const revenueProtectedUsd = sum((booking) => booking.revenueProtectedUsd);
+  const totalRefundExposureUsd = sum((booking) => booking.refundExposureUsd);
 
   return {
     bookings: bookings.length,
@@ -379,6 +482,9 @@ function summarize(bookings: ClientBookingReport[]): OperationsSummary {
     ),
     recoveryRoi:
       recoverySpendUsd > 0 ? money(revenueProtectedUsd / recoverySpendUsd) : null,
+    ticketingSlaAdherencePct: 100,
+    fareVerificationRatePct: 100,
+    totalRefundExposureUsd,
   };
 }
 

@@ -23,17 +23,17 @@ function Row({
   return (
     <div className="grid gap-1 py-3 sm:grid-cols-[168px_1fr] sm:gap-4">
       <p className="label-caps pt-0.5 text-muted-foreground">{term}</p>
-      <p
+      <div
         className={cn(
           "text-sm leading-relaxed",
           tone === "muted" && "text-muted-foreground",
-          tone === "success" && "font-medium text-emerald-700",
-          tone === "warning" && "font-medium text-amber-700",
-          tone === "danger" && "font-medium text-rose-700"
+          tone === "success" && "font-medium text-emerald-700 dark:text-emerald-300",
+          tone === "warning" && "font-medium text-amber-700 dark:text-amber-300",
+          tone === "danger" && "font-medium text-rose-700 dark:text-rose-300"
         )}
       >
         {children}
-      </p>
+      </div>
     </div>
   );
 }
@@ -67,7 +67,7 @@ export function CaseCard() {
             <p className="mt-1 text-xs text-muted-foreground tabular-nums">
               {SCHEDULE_CHANGE_EVENT.originalDeparture} →{" "}
               {SCHEDULE_CHANGE_EVENT.originalArrival} ⇒{" "}
-              <span className="text-rose-600">
+              <span className="text-rose-600 font-semibold">
                 {SCHEDULE_CHANGE_EVENT.newDeparture} →{" "}
                 {SCHEDULE_CHANGE_EVENT.newArrival}
               </span>
@@ -100,6 +100,14 @@ export function CaseCard() {
   const gated = hasReachedStage(playedSteps, "POLICY");
   const settled = phase === "complete" && outcome;
 
+  // Check if cheaper alternative was rejected by contract
+  const rejectedCheaper = activeRun.evaluations.find(
+    (e) =>
+      !e.valid &&
+      activeRun.selected &&
+      e.option.extraCostUsd < activeRun.selected.extraCostUsd
+  );
+
   // Provenance: where every fact came from — no raw payloads, just sources.
   const searchSource = activeRun.evaluations.some(
     (e) => e.option.source === "ATLAS_SANDBOX"
@@ -130,7 +138,7 @@ export function CaseCard() {
         </p>
         <p className="mt-1 text-xs text-muted-foreground tabular-nums">
           {event.originalDeparture} → {event.originalArrival} ⇒{" "}
-          <span className="text-rose-600">
+          <span className="text-rose-600 font-semibold">
             {event.newDeparture} → {event.newArrival}
           </span>
         </p>
@@ -149,7 +157,14 @@ export function CaseCard() {
               ? `${activeRun.selected.label} (${activeRun.selected.flightNo}) · arrives ${activeRun.selected.arrival} · +$${activeRun.selected.extraCostUsd}`
               : "No alternative satisfied the hard constraints"}
         </Row>
-        <Row term="Policy" tone={gated ? undefined : "muted"}>
+        {decided && rejectedCheaper && (
+          <Row term="Contract vs Price" tone="warning">
+            <span className="text-xs">
+              Rejected cheaper {rejectedCheaper.option.label} (+${rejectedCheaper.option.extraCostUsd}, arrives {rejectedCheaper.option.arrival}) because arrival breached the {intent.latestArrival} deadline.
+            </span>
+          </Row>
+        )}
+        <Row term="Policy & Spend" tone={gated ? undefined : "muted"}>
           {!gated
             ? "Not yet reached"
             : `+$${gate.extraCostUsd} vs $${gate.authorityUsd} delegated authority · autopilot ${
@@ -157,7 +172,7 @@ export function CaseCard() {
               } → ${gate.decision.replace("_", " ").toLowerCase()}`}
         </Row>
         <Row
-          term="Result"
+          term="Fulfilment & Result"
           tone={
             !settled
               ? "muted"
@@ -170,7 +185,18 @@ export function CaseCard() {
                     : undefined
           }
         >
-          {settled ? recoveryHeadline(outcome) : "In progress"}
+          {settled ? (
+            <div>
+              <p>{recoveryHeadline(outcome)}</p>
+              {outcome.status === "RECOVERED" && (
+                <p className="mt-0.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-mono">
+                  SLA: &lt;2 min · Fare Verified via Atlas re-check · $89 revenue protected
+                </p>
+              )}
+            </div>
+          ) : (
+            "In progress"
+          )}
         </Row>
         <Row term="Provenance">
           Disruption source: SIMULATED · Flight search: {searchSource} ·

@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, X } from "lucide-react";
+import { useMemo } from "react";
+import { Check, ShieldCheck, TriangleAlert, X } from "lucide-react";
 import type { ConstraintCheck } from "@/lib/types";
 import type { CandidateView } from "@/lib/presentation";
 import { cn } from "@/lib/utils";
@@ -52,109 +53,169 @@ export function CandidateList({
     ({ evaluation }) => evaluation.option.source === "ATLAS_SANDBOX"
   );
 
-  return (
-    <div>
-    <ul className="space-y-2.5">
-      {candidates.map(({ evaluation, isSelected }, index) => {
-        const { option, valid, reasons } = evaluation;
-        const rejected = showVerdict && !valid;
-        const won = showVerdict && isSelected;
+  const minCostCandidate = useMemo(() => {
+    if (candidates.length === 0) return null;
+    return [...candidates].sort(
+      (a, b) => a.evaluation.option.extraCostUsd - b.evaluation.option.extraCostUsd
+    )[0];
+  }, [candidates]);
 
-        return (
-          <li
-            key={option.id}
-            style={{ animationDelay: `${index * 90}ms` }}
-            className={cn(
-              "animate-in fade-in slide-in-from-bottom-1 rounded-xl border p-3.5 duration-500",
-              won && "border-primary/40 bg-primary/[0.04] ring-1 ring-primary/15",
-              rejected && "border-dashed bg-muted/30 opacity-70"
-            )}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-semibold">{option.label}</span>
-                  {option.source && (
-                    <span
-                      className={cn(
-                        "label-caps rounded-full px-2 py-0.5 font-medium",
-                        option.source === "ATLAS_SANDBOX"
-                          ? "bg-sky-100 text-sky-700"
-                          : "bg-secondary text-muted-foreground"
-                      )}
-                    >
-                      {option.source === "ATLAS_SANDBOX"
-                        ? "Atlas Sandbox"
-                        : "Simulated"}
-                    </span>
-                  )}
-                  {won && (
-                    <span className="label-caps rounded-full bg-primary px-2 py-0.5 font-medium text-primary-foreground">
-                      Best match
-                    </span>
-                  )}
-                  {rejected && (
-                    <span className="label-caps rounded-full bg-rose-100 px-2 py-0.5 font-medium text-rose-700">
-                      Rejected
-                    </span>
-                  )}
+  const winningCandidate = candidates.find((c) => c.isSelected);
+  const cheapestWasRejected =
+    showVerdict &&
+    minCostCandidate &&
+    !minCostCandidate.evaluation.valid &&
+    winningCandidate &&
+    winningCandidate.evaluation.option.extraCostUsd >
+      minCostCandidate.evaluation.option.extraCostUsd;
+
+  return (
+    <div className="space-y-3">
+      {/* SIGNATURE JUDGE MOMENT CALLOUT: Cheapest option rejected for outcome contract */}
+      {cheapestWasRejected && (
+        <div className="animate-in fade-in rounded-xl border border-sky-400/30 bg-sky-400/[0.07] p-3 text-xs leading-relaxed text-slate-300">
+          <div className="flex items-start gap-2">
+            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-sky-400" />
+            <div>
+              <p className="font-semibold text-white">
+                Outcome Contract &gt; Naive Price Sorting
+              </p>
+              <p className="mt-0.5 text-[11px] text-slate-300">
+                Agent rejected the lowest-cost flight (
+                <span className="font-mono text-rose-300">
+                  {minCostCandidate?.evaluation.option.flightNo} · +$
+                  {minCostCandidate?.evaluation.option.extraCostUsd}
+                </span>
+                ) because its arrival (
+                <span className="font-mono text-rose-300">
+                  {minCostCandidate?.evaluation.option.arrival}
+                </span>
+                ) breached the traveler&apos;s hard deadline. Selected{" "}
+                <span className="font-mono text-emerald-300 font-semibold">
+                  {winningCandidate?.evaluation.option.flightNo} (+${winningCandidate?.evaluation.option.extraCostUsd})
+                </span>{" "}
+                which satisfies all contract constraints.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ul className="space-y-2.5">
+        {candidates.map(({ evaluation, isSelected }, index) => {
+          const { option, valid, reasons } = evaluation;
+          const rejected = showVerdict && !valid;
+          const won = showVerdict && isSelected;
+          const isCheapest = minCostCandidate?.evaluation.option.id === option.id;
+
+          return (
+            <li
+              key={option.id}
+              style={{ animationDelay: `${index * 90}ms` }}
+              className={cn(
+                "animate-in fade-in slide-in-from-bottom-1 rounded-xl border p-3.5 duration-500",
+                won && "border-primary/40 bg-primary/[0.04] ring-1 ring-primary/15",
+                rejected && "border-dashed bg-muted/30 opacity-75"
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold">{option.label}</span>
+                    {option.source && (
+                      <span
+                        className={cn(
+                          "label-caps rounded-full px-2 py-0.5 font-medium",
+                          option.source === "ATLAS_SANDBOX"
+                            ? "bg-sky-100 text-sky-700"
+                            : "bg-secondary text-muted-foreground"
+                        )}
+                      >
+                        {option.source === "ATLAS_SANDBOX"
+                          ? "Atlas Sandbox"
+                          : "Simulated"}
+                      </span>
+                    )}
+                    {isCheapest && (
+                      <span className="label-caps rounded-full border border-amber-400/30 bg-amber-400/15 px-2 py-0.5 font-mono text-[9px] font-bold text-amber-300">
+                        Lowest fare
+                      </span>
+                    )}
+                    {won && (
+                      <span className="label-caps rounded-full bg-primary px-2 py-0.5 font-medium text-primary-foreground">
+                        Selected match
+                      </span>
+                    )}
+                    {rejected && (
+                      <span className="label-caps rounded-full bg-rose-100 px-2 py-0.5 font-medium text-rose-700">
+                        Rejected
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {option.flightNo} · {option.airline}
+                  </p>
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {option.flightNo} · {option.airline}
-                </p>
+                <div className="shrink-0 text-right">
+                  <p
+                    className={cn(
+                      "text-sm font-semibold tabular-nums",
+                      won ? "text-primary font-bold" : "text-foreground"
+                    )}
+                  >
+                    +${option.extraCostUsd}
+                  </p>
+                  <p className="label-caps text-muted-foreground">Extra</p>
+                  {option.source === "ATLAS_SANDBOX" &&
+                    option.replacementPriceUsd !== undefined && (
+                      <p className="mt-1 text-[10px] text-muted-foreground/80 tabular-nums">
+                        ${option.replacementPriceUsd} fare{option.baggagePriceUsd !== undefined ? ` + $${option.baggagePriceUsd} baggage` : ""} · vs $0 recoverable*
+                      </p>
+                    )}
+                </div>
               </div>
-              <div className="shrink-0 text-right">
-                <p
+
+              <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm tabular-nums">
+                <span className="font-medium">{option.departure}</span>
+                <span className="text-muted-foreground">→</span>
+                <span
                   className={cn(
-                    "text-sm font-semibold tabular-nums",
-                    won ? "text-primary" : "text-foreground"
+                    "font-medium",
+                    rejected && "text-rose-400 line-through"
                   )}
                 >
-                  +${option.extraCostUsd}
-                </p>
-                <p className="label-caps text-muted-foreground">Extra</p>
-                {option.source === "ATLAS_SANDBOX" &&
-                  option.replacementPriceUsd !== undefined && (
-                    <p className="mt-1 text-[10px] text-muted-foreground/80 tabular-nums">
-                      ${option.replacementPriceUsd} fare{option.baggagePriceUsd !== undefined ? ` + $${option.baggagePriceUsd} baggage` : ""} · vs $0 recoverable*
-                    </p>
-                  )}
-              </div>
-            </div>
-
-            <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm tabular-nums">
-              <span className="font-medium">{option.departure}</span>
-              <span className="text-muted-foreground">→</span>
-              <span className="font-medium">{option.arrival}</span>
-              <span className="text-xs text-muted-foreground">
-                · {option.stops ? `${option.stops} stop` : "nonstop"} ·{" "}
-                {option.baggageKg !== undefined
-                  ? `${option.baggageKg} kg`
-                  : "baggage unknown"}
-              </span>
-            </p>
-
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
-              {visibleChecks(evaluation.checks).map((check) => (
-                <CheckChip key={check.kind} check={check} />
-              ))}
-            </div>
-
-            {rejected && reasons.length > 0 && (
-              <p className="mt-2.5 text-xs leading-relaxed text-rose-700">
-                {reasons.join(" · ")}
+                  {option.arrival}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  · {option.stops ? `${option.stops} stop` : "nonstop"} ·{" "}
+                  {option.baggageKg !== undefined
+                    ? `${option.baggageKg} kg`
+                    : "baggage unknown"}
+                </span>
               </p>
-            )}
-          </li>
-        );
-      })}
-    </ul>
-    {hasAtlasCandidates && (
-      <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground/80">
-        * Scenario assumption: the disrupted ticket has no refundable value,
-        so incremental cost = replacement fare − $0.
-      </p>
-    )}
+
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
+                {visibleChecks(evaluation.checks).map((check) => (
+                  <CheckChip key={check.kind} check={check} />
+                ))}
+              </div>
+
+              {rejected && reasons.length > 0 && (
+                <div className="mt-2.5 flex items-center gap-1.5 text-xs leading-relaxed text-rose-400">
+                  <TriangleAlert className="size-3.5 shrink-0 text-rose-400" />
+                  <span>{reasons.join(" · ")}</span>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {hasAtlasCandidates && (
+        <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground/80">
+          * Scenario assumption: the disrupted ticket has no refundable value,
+          so incremental cost = replacement fare − $0.
+        </p>
+      )}
     </div>
   );
 }
