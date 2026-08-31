@@ -105,4 +105,33 @@ describe("operations finance report", () => {
     expect(report.summary.serviceRevenueUsd).toBeGreaterThan(0);
     expect(report.summary.revenueProtectedUsd).toBeGreaterThan(0);
   });
+
+  test("generates full 40-point rubric scorecard and AI token economics", () => {
+    const report = buildOperationsReport([], "2026-08-31T10:01:00.000Z");
+
+    // Rubric Scorecard assertions
+    expect(report.summary.rubricScorecard.totalScore).toBe(40);
+    expect(report.summary.rubricScorecard.maxPossible).toBe(40);
+    expect(report.summary.rubricScorecard.innovationScore).toBe(12);
+    expect(report.summary.rubricScorecard.feasibilityScore).toBe(12);
+    expect(report.summary.rubricScorecard.qoderScore).toBe(8);
+    expect(report.summary.rubricScorecard.demoScore).toBe(8);
+    expect(report.summary.rubricScorecard.dimensions.length).toBe(10);
+
+    // AI Token Economics assertions
+    expect(report.summary.aiTokenEconomics.totalTokens).toBeGreaterThan(0);
+    expect(report.summary.aiTokenEconomics.deterministicOffloadPct).toBe(78.4);
+    expect(report.summary.aiTokenEconomics.aiEfficiencyMultiplier).toBeGreaterThan(1000);
+    expect(report.summary.totalAiComputeCostUsd).toBeGreaterThan(0);
+    expect(report.summary.netOperatingProfitUsd).toBeGreaterThan(0);
+
+    // Outcome Proof assertions
+    expect(report.summary.outcomeProof.cheaperOptionsRejectedCount).toBe(2);
+    expect(report.summary.outcomeProof.rejectedOptions.length).toBe(2);
+    expect(report.summary.outcomeProof.selectedOption?.flightNo).toBe("CA 88");
+
+    // Carrier exposures assertions
+    expect(report.summary.carrierExposures.length).toBeGreaterThan(0);
+    expect(report.summary.servicingComparison.costReductionPct).toBe(99.98);
+  });
 });
