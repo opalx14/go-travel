@@ -155,12 +155,13 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     autoResolved: 0,
     needsApproval: 0,
   });
-  const [persistenceStatus, setPersistenceStatus] = useState<PersistenceStatus>("loading");
+  const [persistenceStatus, setPersistenceStatus] = useState<PersistenceStatus>("saved");
   const [evidenceView, setEvidenceView] = useState<EvidenceView>("issue");
 
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const persistenceHydratedRef = useRef(false);
+  const skipNextPersistRef = useRef(false);
   /**
    * Run-generation guard: any in-flight await captures its generation, and
    * bails when a newer generation exists (Reset while a run is pending).
@@ -175,6 +176,17 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   useEffect(() => clearTimers, [clearTimers]);
 
   useEffect(() => {
+    // Judge/demo entry should always start from a clean traveler state. Persisted
+    // SQLite evidence remains available to the admin dashboard, while an
+    // explicit ?resume=1 URL can still restore the current device journey for
+    // debugging or continuity checks.
+    const shouldResume = new URLSearchParams(window.location.search).get("resume") === "1";
+    if (!shouldResume) {
+      skipNextPersistRef.current = true;
+      persistenceHydratedRef.current = true;
+      return;
+    }
+
     const controller = new AbortController();
 
     async function restoreDeviceJourney() {
@@ -215,6 +227,10 @@ export function DemoProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!persistenceHydratedRef.current || phase === "running") return;
+    if (skipNextPersistRef.current) {
+      skipNextPersistRef.current = false;
+      return;
+    }
 
     if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
     persistTimerRef.current = setTimeout(() => {
