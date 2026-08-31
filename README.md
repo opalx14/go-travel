@@ -31,6 +31,15 @@ The recovery policy never treats an unknown Atlas baggage allowance as confirmed
 
 Set `DASHSCOPE_API_KEY` on the server to enable Qwen extraction. `QWEN_MODEL` is optional and defaults to `qwen-flash`. If Qwen is unavailable or not configured, the app falls back to a deterministic local parser and labels that provenance in the UI.
 
+## Operations & business evidence
+
+`/operations` separates the internal view into two judge-friendly surfaces:
+
+- **Business P&L** — modeled booking value, service revenue, supplier cost, gross profit, revenue protected / at risk, recovery efficiency, and AP / AR exposure.
+- **Client bookings** — one pseudonymous row per persisted device journey, including the traveler contract, disruption/recovery status, selected flight, rejected alternatives, delegated spend, and provenance.
+
+The finance layer is intentionally transparent: it uses persisted booking/recovery evidence plus a **12% demo service-margin assumption (minimum $6)**. Atlas Sandbox verifies fares, but this repository does not create or pay live orders, so AP/AR is displayed as modeled/open exposure rather than claimed settlement data. When SQLite has no journeys yet, the operations view uses a deterministic demo cohort so the judging flow remains presentable.
+
 ## Provenance
 
 - Development tooling: Qoder
@@ -39,6 +48,8 @@ Set `DASHSCOPE_API_KEY` on the server to enable Qwen extraction. `QWEN_MODEL` is
 - Environment: Atlas Sandbox
 - Disruption event: Simulated
 - Flight search / fare verification / price confirmation / baggage options: Atlas Sandbox
+- Client operations evidence: device-scoped SQLite persistence
+- Finance / P&L: modeled demo economics, not production accounting or settlement
 
 *Note: This is a demonstration project using the Atlas Sandbox environment. It does not perform live production bookings.*
 

@@ -72,9 +72,10 @@ export function NavHeader() {
 
           <Link
             href="/operations"
+            prefetch={false}
             className="ti-control hidden items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition lg:inline-flex"
           >
-            Case Console
+            Operations
           </Link>
 
           <div className="ti-status-success flex items-center gap-2 rounded-full border px-2.5 py-1 sm:px-3">
