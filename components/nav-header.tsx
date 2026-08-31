@@ -18,7 +18,7 @@ function RouteMark() {
 }
 
 export function NavHeader() {
-  const { trip, isProtected, evidenceView, setEvidenceView } = useDemo();
+  const { isProtected, evidenceView, setEvidenceView } = useDemo();
   const pathname = usePathname();
   const isAdmin = pathname.startsWith("/admin") || pathname.startsWith("/operations");
 
@@ -29,9 +29,6 @@ export function NavHeader() {
           <RouteMark />
           <span className="text-[17px] leading-none font-bold tracking-tight text-white">
             Trip<span className="text-sky-400">Intent</span>
-          </span>
-          <span className="hidden rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-0.5 font-mono text-[10px] font-semibold text-sky-300 lg:inline-block">
-            Autonomous Recovery Agent
           </span>
         </Link>
 
@@ -48,10 +45,6 @@ export function NavHeader() {
             <>
               {isProtected && (
                 <div className="hidden items-center gap-2 md:flex">
-                  <span className="ti-control rounded-full px-3 py-1.5 font-mono text-[10px] font-semibold text-slate-300">
-                    {trip.origin} → {trip.destination}
-                  </span>
-
                   <div className="ti-control flex items-center gap-1 rounded-full p-1">
                     <button
                       type="button"

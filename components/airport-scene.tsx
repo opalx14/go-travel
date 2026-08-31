@@ -182,18 +182,10 @@ export function AirportScene({
         <div className="airport-grid pointer-events-none absolute inset-0 opacity-[0.08]" />
         <div className="relative mx-auto flex min-h-[calc(100svh-4rem)] w-full max-w-5xl items-center px-5 pb-44 pt-12 sm:px-6 sm:py-14">
           <div className="mx-auto max-w-sm text-center sm:hidden">
-            <span className="label-caps text-cyan-400">Outcome-first travel</span>
+            <span className="label-caps text-cyan-400">TripIntent</span>
             <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-slate-100">
-              Tell TripIntent what must stay true.
+              Protect the outcome.
             </h1>
-            <p className="mt-3 text-sm leading-6 text-slate-500">
-              Set your destination, arrival deadline, baggage and delegated spend. The agent handles the itinerary only after you protect the outcome.
-            </p>
-            <div className="mt-5 flex flex-wrap justify-center gap-2 font-mono text-[9px] text-slate-500">
-              <span className="rounded-full border border-white/[0.07] bg-white/[0.02] px-2.5 py-1">Arrival deadline</span>
-              <span className="rounded-full border border-white/[0.07] bg-white/[0.02] px-2.5 py-1">Baggage</span>
-              <span className="rounded-full border border-white/[0.07] bg-white/[0.02] px-2.5 py-1">Spend authority</span>
-            </div>
           </div>
           <AirportChatCenterpiece inline />
         </div>
@@ -227,7 +219,7 @@ export function AirportScene({
                 </span>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-slate-100">
-                    KLIA Terminal 1 · Concourse Alpha
+                    KLIA T1 · Alpha
                   </p>
                 </div>
               </div>
@@ -238,7 +230,7 @@ export function AirportScene({
 
             <div className="mt-4 rounded-2xl border border-white/[0.07] bg-[#09111e] p-4 sm:p-5">
               <div className="flex items-center justify-between gap-3">
-                <h3 className="text-sm font-semibold text-slate-100">Flight change</h3>
+                <h3 className="text-sm font-semibold text-slate-100">Recovery</h3>
                 <span className="rounded-full border border-white/[0.07] bg-white/[0.02] px-2.5 py-1 font-mono text-[9px] text-slate-500">
                   KLIA T1
                 </span>
@@ -317,8 +309,8 @@ export function AirportScene({
                         {recovered
                           ? `${recoveryGate.departure} · verified`
                           : recovering
-                            ? "Finding a valid replacement…"
-                            : "Ready if needed"}
+                            ? "Searching…"
+                            : "Standby"}
                       </p>
                     </div>
                   </div>
