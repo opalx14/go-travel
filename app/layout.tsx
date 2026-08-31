@@ -36,11 +36,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           />
         )}
       </head>
-      <body className="flex min-h-full flex-col bg-background text-foreground selection:bg-primary/20">
+      <body className="flex min-h-full flex-col bg-[#070c18] text-foreground selection:bg-primary/20">
         <DemoProvider>
           <NavHeader />
           {children}
-          <footer className="mt-auto hidden border-t border-border/50 pb-8 pt-10 text-center text-[11px] text-muted-foreground sm:block sm:py-12">
+          <footer className="mt-auto hidden border-t border-white/[0.06] bg-[#070c18] pb-8 pt-10 text-center text-[11px] text-muted-foreground sm:block sm:py-12">
             <p className="font-semibold text-foreground">TripIntent</p>
             <p className="mt-1">Built for Alibaba Cloud × Atlas × Qoder Agentic AI Hackathon 2026</p>
             <p className="mt-1.5">Atlas Sandbox &middot; Built with Qoder</p>

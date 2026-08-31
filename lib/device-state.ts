@@ -7,7 +7,7 @@ import type {
   TravelIntent,
 } from "./types";
 
-export type PersistedDemoPhase = "idle" | "disrupted" | "complete";
+export type PersistedDemoPhase = "idle" | "disrupted" | "running" | "complete";
 
 export interface PersistedOpsStats {
   exceptions: number;
@@ -51,6 +51,7 @@ export function isDeviceJourneySnapshot(value: unknown): value is DeviceJourneyS
     typeof candidate.intent.autopilot === "boolean" &&
     (candidate.phase === "idle" ||
       candidate.phase === "disrupted" ||
+      candidate.phase === "running" ||
       candidate.phase === "complete") &&
     typeof candidate.isProtected === "boolean" &&
     Array.isArray(candidate.playedSteps) &&

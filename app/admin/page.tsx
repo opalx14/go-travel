@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, Database, ShieldCheck } from "lucide-react";
 import { AdminDashboard } from "@/components/admin-dashboard";
+import { toAdminLiveSession } from "@/lib/admin-live";
 import { listDeviceJourneys } from "@/lib/device-state-db";
 import { buildOperationsReport } from "@/lib/operations-finance";
 
@@ -8,7 +9,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export default function AdminPage() {
-  const journeys = listDeviceJourneys().map((journey) => ({
+  const rows = listDeviceJourneys();
+  const journeys = rows.map((journey) => ({
     deviceId: journey.deviceId,
     createdAt: journey.createdAt,
     lastSeenAt: journey.lastSeenAt,
@@ -16,6 +18,9 @@ export default function AdminPage() {
     snapshot: journey.snapshot,
   }));
   const report = buildOperationsReport(journeys);
+  const sessions = rows
+    .map(toAdminLiveSession)
+    .filter((session): session is NonNullable<typeof session> => session !== null);
 
   return (
     <main className="ti-canvas min-h-screen flex-1 text-slate-100">
@@ -56,7 +61,7 @@ export default function AdminPage() {
         </div>
 
         <div className="mt-6">
-          <AdminDashboard report={report} />
+          <AdminDashboard report={report} initialSessions={sessions} />
         </div>
       </section>
     </main>

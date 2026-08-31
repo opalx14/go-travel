@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CornerDownLeft, Plus, SendHorizontal, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ProtectPanel } from "@/components/protect-panel";
 import { useDemo } from "@/lib/demo-store";
 
 const EXAMPLE_BRIEF =
@@ -17,16 +18,19 @@ export function TravelBrief() {
   const {
     isProtected,
     intent,
+    intentMatchedFields,
     intentSource,
     protectTrip,
   } = useDemo();
   const [brief, setBrief] = useState(EXAMPLE_BRIEF);
+  const [submittedBrief, setSubmittedBrief] = useState(EXAMPLE_BRIEF);
   const [isParsing, setIsParsing] = useState(false);
 
   const submit = async () => {
     const value = brief.trim();
     if (!value || isProtected || isParsing) return;
     setIsParsing(true);
+    setSubmittedBrief(value);
     try {
       await protectTrip(value);
     } finally {
@@ -36,18 +40,31 @@ export function TravelBrief() {
 
   if (isProtected) {
     return (
-      <div className="ti-surface-subtle flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2.5 text-[11px] sm:px-4">
-        <span className="flex items-center gap-1.5 font-semibold text-slate-200">
-          <Sparkles className="size-3.5 text-sky-400" />
-          Outcome
-        </span>
-        <span className="font-mono text-slate-400">≤ {intent.latestArrival}</span>
-        <span className="font-mono text-slate-400">· {intent.minBaggageKg}kg</span>
-        <span className="font-mono text-slate-400">· +{intent.departureFlexibilityHours}h</span>
-        <span className="font-mono text-emerald-300">· ${intent.maxExtraSpendUsd}</span>
-        <span className="ml-auto hidden font-mono text-[10px] text-slate-500 sm:inline">
-          {intentSource === "QWEN" ? "Qwen" : "Parser"} · {intent.autopilot ? "Auto" : "Manual"}
-        </span>
+      <div className="space-y-3">
+        <div className="ti-status-active choreo-reveal choreo-delay-1 ml-auto max-w-[88%] rounded-2xl rounded-br-md border px-4 py-3 text-sm leading-relaxed sm:max-w-xl">
+          {submittedBrief}
+        </div>
+        <div className="ti-surface choreo-reveal choreo-delay-2 max-w-[92%] rounded-2xl rounded-bl-md px-4 py-3 sm:max-w-xl">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <span className="flex size-7 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Sparkles className="size-3.5" />
+            </span>
+            <span className="sm:hidden">Got it</span>
+            <span className="hidden sm:inline">Outcome captured</span>
+          </div>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:hidden">
+            Arrive by {intent.latestArrival} · {intent.minBaggageKg} kg · +{intent.departureFlexibilityHours}h · auto ≤ ${intent.maxExtraSpendUsd}
+          </p>
+          <p className="mt-2 hidden text-sm leading-relaxed text-muted-foreground sm:block">
+            Intent compiled: arrive by {intent.latestArrival}, at least {intent.minBaggageKg}kg baggage, departure flexibility +{intent.departureFlexibilityHours}h, and up to ${intent.maxExtraSpendUsd} delegated spend.
+          </p>
+          <p className="mt-2 hidden text-xs text-muted-foreground/80 sm:block">
+            {intentMatchedFields.length} constraint{intentMatchedFields.length === 1 ? "" : "s"} read directly from your brief · {intentSource === "QWEN" ? "Qwen extraction" : "Deterministic fallback"} · Autopilot {intent.autopilot ? "on" : "off"}
+          </p>
+        </div>
+        <div className="choreo-reveal choreo-delay-3 hidden sm:block">
+          <ProtectPanel />
+        </div>
       </div>
     );
   }
@@ -61,7 +78,12 @@ export function TravelBrief() {
               <Sparkles className="size-4" />
             </span>
             <div>
-              <p className="text-base font-semibold tracking-[-0.015em]">Define your outcome</p>
+              <p className="text-base font-semibold tracking-[-0.015em]">
+                Where do you need to be?
+              </p>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                Tell TripIntent the outcome. Include where you’re going, when you must arrive, baggage and your budget.
+              </p>
             </div>
           </div>
 
@@ -120,7 +142,13 @@ export function TravelBrief() {
             </div>
           </div>
 
-
+          <div className="mt-3 hidden flex-wrap items-center gap-2 text-[11px] text-muted-foreground sm:flex">
+            <span className="ti-control rounded-full px-2.5 py-1">KUL → SIN protected trip</span>
+            <span className="ti-control rounded-full px-2.5 py-1">Natural-language intent</span>
+            <span className="ti-control rounded-full px-2.5 py-1">Arrival deadline</span>
+            <span className="ti-control rounded-full px-2.5 py-1">Baggage requirement</span>
+            <span className="ti-control rounded-full px-2.5 py-1">Delegated spend</span>
+          </div>
         </div>
       </div>
     </section>

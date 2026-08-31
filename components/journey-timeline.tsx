@@ -367,10 +367,15 @@ export function JourneyTimeline({ showHero = false }: { showHero?: boolean }) {
           </TimelineNode>
           <div className="min-w-0 pt-1">
             <div className="hidden flex-wrap items-center justify-between gap-2 sm:flex">
-              <p className="text-sm font-bold text-foreground">1. Outcome</p>
+              <div>
+                <p className="text-sm font-bold text-foreground">1. Define the outcome</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  TripIntent protects what matters, not a specific flight number.
+                </p>
+              </div>
               {isProtected && (
                 <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                  <Check className="size-3.5" /> Protected
+                  <Check className="size-3.5" /> Outcome Protected
                 </span>
               )}
             </div>
@@ -391,14 +396,19 @@ export function JourneyTimeline({ showHero = false }: { showHero?: boolean }) {
             </TimelineNode>
             <div className="min-w-0 pt-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-bold text-foreground">2. Monitor</p>
+                <div>
+                  <p className="text-sm font-bold text-foreground">2. Watch the journey</p>
+                  <p className="mt-0.5 hidden text-xs text-muted-foreground sm:block">
+                    Airline changes are monitored against your arrival goal.
+                  </p>
+                </div>
                 {!disrupted && (
                   <span className="flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                     <span className="relative flex size-2">
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
                       <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
                     </span>
-                    Live
+                    Monitoring active
                   </span>
                 )}
               </div>
@@ -409,10 +419,10 @@ export function JourneyTimeline({ showHero = false }: { showHero?: boolean }) {
                   <div className="ti-surface rounded-2xl border-rose-500/20 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="text-sm font-semibold text-rose-700 dark:text-rose-300">
-                        Schedule changed
+                        Airline schedule disruption detected
                       </p>
                       <span className="label-caps font-bold text-rose-600 dark:text-rose-400">
-                        Goal missed
+                        Arrival Goal Violated
                       </span>
                     </div>
                     <p className="mt-1.5 font-mono text-sm tabular-nums text-foreground">
@@ -440,10 +450,15 @@ export function JourneyTimeline({ showHero = false }: { showHero?: boolean }) {
             </TimelineNode>
             <div className="min-w-0 pt-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-bold text-foreground">3. Recover</p>
+                <div>
+                  <p className="text-sm font-bold text-foreground">3. Recover with Atlas Sandbox</p>
+                  <p className="mt-0.5 hidden text-xs text-muted-foreground sm:block">
+                    Search real alternatives, score them against intent, and verify the chosen fare.
+                  </p>
+                </div>
                 {searched && (
                   <span className="text-xs font-semibold text-primary">
-                    Atlas verified
+                    Atlas verification complete
                   </span>
                 )}
               </div>
@@ -475,10 +490,15 @@ export function JourneyTimeline({ showHero = false }: { showHero?: boolean }) {
             </TimelineNode>
             <div className="min-w-0 pt-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-bold text-foreground">4. Result</p>
+                <div>
+                  <p className="text-sm font-bold text-foreground">4. Present the verified recovery</p>
+                  <p className="mt-0.5 hidden text-xs text-muted-foreground sm:block">
+                    The passenger sees one clear verified recovery option ready for the next booking step.
+                  </p>
+                </div>
                 {outcome?.status === "RECOVERED" && (
                   <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                    <Check className="size-3.5" /> Fare verified
+                    <Check className="size-3.5" /> Fare Verified via Atlas
                   </span>
                 )}
               </div>
@@ -499,7 +519,7 @@ export function JourneyTimeline({ showHero = false }: { showHero?: boolean }) {
             className="ti-control inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-semibold text-muted-foreground transition-all hover:text-foreground"
           >
             <RotateCcw className="size-3.5" />
-            New demo
+            Start new demo session
           </button>
         </div>
       )}

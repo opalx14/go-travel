@@ -226,7 +226,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!persistenceHydratedRef.current || phase === "running") return;
+    if (!persistenceHydratedRef.current) return;
     if (skipNextPersistRef.current) {
       skipNextPersistRef.current = false;
       return;

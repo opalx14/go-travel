@@ -238,7 +238,7 @@ function classify(snapshot: DeviceJourneySnapshot): BookingHealth {
   if (status === "NEEDS_APPROVAL") return "approval";
   if (status === "DECLINED") return "declined";
   if (status === "FAILED") return "failed";
-  if (snapshot.phase === "disrupted") return "disrupted";
+  if (snapshot.phase === "disrupted" || snapshot.phase === "running") return "disrupted";
   return snapshot.isProtected ? "protected" : "unprotected";
 }
 

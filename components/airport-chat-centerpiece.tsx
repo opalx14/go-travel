@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import {
   Bot,
+  Check,
   Clock,
   CornerDownLeft,
   Luggage,
@@ -19,17 +20,17 @@ import { cn } from "@/lib/utils";
 const PRESET_PROMPTS = [
   {
     id: "standard",
-    label: "⚡ 18:00 · 20kg · $50",
+    label: "⚡ KUL → SIN by 18:00 · 20kg bag · $50 flex",
     text: "I need to reach Singapore before 6 PM with at least 20kg checked baggage. If my flight changes, you can spend up to $50 extra without asking me. I can leave up to 3 hours later.",
   },
   {
     id: "urgent",
-    label: "💼 17:30 · 25kg · $100",
+    label: "💼 Urgent Business · Strict 17:30 Arrival · $100 flex",
     text: "I have a vital client meeting in Singapore at 17:30. Must arrive before 17:30 with 25kg luggage. You have authority to spend up to $100 extra for any verified flight.",
   },
   {
     id: "leisure",
-    label: "🧳 19:00 · 30kg · $30",
+    label: "🧳 Leisure Trip · 30kg Baggage · Flexible Depart",
     text: "Flying to Singapore, need 30kg checked baggage and must arrive by 19:00. Up to 4 hours departure flexibility with $30 extra budget.",
   },
 ];
@@ -111,10 +112,10 @@ export function AirportChatCenterpiece({ inline = false }: { inline?: boolean })
               </span>
               <span className="font-mono text-xs font-bold tracking-wider text-slate-200">
                 {isDisrupted
-                  ? "DELAYED"
+                  ? "FLIGHT DELAYED"
                   : isRecovered
-                    ? "RECOVERED"
-                    : "PROTECTED"}
+                    ? "RECOVERY READY"
+                    : "TRIP PROTECTED"}
               </span>
             </div>
 
@@ -126,7 +127,7 @@ export function AirportChatCenterpiece({ inline = false }: { inline?: boolean })
                   className="ti-status-danger inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition hover:bg-rose-500/15 hover:text-white"
                 >
                   <ShieldAlert className="size-3 text-rose-400" />
-                  Delay
+                  Trigger delay
                 </button>
               )}
             </div>
@@ -135,13 +136,13 @@ export function AirportChatCenterpiece({ inline = false }: { inline?: boolean })
           <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300">
             <div className="flex flex-wrap items-center gap-2 font-mono text-[11px]">
               <span className="ti-status-active inline-flex items-center gap-1 rounded-md border px-2 py-1">
-                <Clock className="size-3" /> {intent.latestArrival}
+                <Clock className="size-3" /> By {intent.latestArrival}
               </span>
               <span className="ti-status-active inline-flex items-center gap-1 rounded-md border px-2 py-1">
-                <Luggage className="size-3" /> {intent.minBaggageKg}kg
+                <Luggage className="size-3" /> {intent.minBaggageKg}kg bag
               </span>
               <span className="ti-status-success inline-flex items-center gap-1 rounded-md border px-2 py-1">
-                <ShieldCheck className="size-3" /> ${intent.maxExtraSpendUsd}
+                <ShieldCheck className="size-3" /> ${intent.maxExtraSpendUsd} auto
               </span>
             </div>
 
@@ -150,7 +151,7 @@ export function AirportChatCenterpiece({ inline = false }: { inline?: boolean })
               onClick={resetDemo}
               className="text-[11px] font-mono text-slate-400 underline-offset-4 hover:text-white hover:underline"
             >
-              Reset
+              Reset Brief
             </button>
           </div>
         </div>
@@ -184,19 +185,19 @@ export function AirportChatCenterpiece({ inline = false }: { inline?: boolean })
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-[10px] font-bold tracking-widest text-sky-400 uppercase">
-                  TripIntent
+                  TripIntent AI Dispatcher
                 </span>
                 <span className="flex size-1.5 rounded-full bg-emerald-400 animate-ping" />
               </div>
               <h2 className="text-base font-bold tracking-tight text-white sm:text-lg">
-                Define your outcome
+                Where do you need to be?
               </h2>
             </div>
           </div>
 
           <div className="ti-control hidden items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] sm:flex">
             <Radio className="size-3 text-sky-400 animate-pulse" />
-            <span>KUL · Active</span>
+            <span>KUL Terminal 1 · Active</span>
           </div>
         </div>
 
@@ -229,7 +230,7 @@ export function AirportChatCenterpiece({ inline = false }: { inline?: boolean })
           <div className="flex items-center justify-end border-t border-white/10 pt-2 text-[11px] text-slate-400 sm:justify-between">
             <div className="hidden items-center gap-1.5 text-[10px] font-mono text-slate-400 sm:flex">
               <CornerDownLeft className="size-3 text-sky-400" />
-              <span>Enter to protect</span>
+              <span>Press Enter to activate protection</span>
             </div>
 
             <button
@@ -244,11 +245,11 @@ export function AirportChatCenterpiece({ inline = false }: { inline?: boolean })
               {isParsing ? (
                 <>
                   <Sparkles className="size-3.5 animate-spin" />
-                  <span className="hidden sm:inline">Parsing...</span>
+                  <span className="hidden sm:inline">Compiling Intent...</span>
                 </>
               ) : (
                 <>
-                  <span className="hidden sm:inline">Protect</span>
+                  <span className="hidden sm:inline">Start Protecting Outcome</span>
                   <SendHorizontal className="size-3.5" />
                 </>
               )}
@@ -258,8 +259,8 @@ export function AirportChatCenterpiece({ inline = false }: { inline?: boolean })
 
         {/* Quick Suggestion Presets */}
         <div className="mt-3 hidden sm:block">
-          <p className="mb-1.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-            Presets
+          <p className="font-mono text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+            Quick Scenarios:
           </p>
           <div className="flex flex-wrap gap-1.5">
             {PRESET_PROMPTS.map((preset) => {
@@ -283,6 +284,21 @@ export function AirportChatCenterpiece({ inline = false }: { inline?: boolean })
           </div>
         </div>
 
+        {/* Bottom Feature Tags */}
+        <div className="mt-3.5 hidden items-center justify-between border-t ti-divider pt-2.5 font-mono text-[10px] text-slate-500 sm:flex">
+          <span className="flex items-center gap-1 text-slate-300">
+            <Check className="size-3 text-emerald-400" />
+            Atlas Sandbox verified booking
+          </span>
+          <span className="flex items-center gap-1 text-slate-300">
+            <Check className="size-3 text-sky-400" />
+            Qwen Intent Natural Parser
+          </span>
+          <span className="flex items-center gap-1 text-slate-300">
+            <Check className="size-3 text-amber-400" />
+            Autonomous Disruption Recovery
+          </span>
+        </div>
       </div>
     </div>
   );

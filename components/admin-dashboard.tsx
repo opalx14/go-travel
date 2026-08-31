@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Activity,
@@ -17,6 +17,7 @@ import {
   Flame,
   Percent,
   RefreshCw,
+  Radio,
   Scale,
   ShieldCheck,
   Sparkles,
@@ -25,6 +26,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import type { AdminLivePayload, AdminLiveSession } from "@/lib/admin-live";
 import type {
   BookingHealth,
   ClientBookingReport,
@@ -33,7 +35,7 @@ import type {
 import { DEMO_SERVICE_MARGIN_RATE } from "@/lib/operations-finance";
 import { cn } from "@/lib/utils";
 
-type AdminTab = "outcomes" | "pnl" | "ai-budget" | "rubric" | "bookings";
+type AdminTab = "live" | "outcomes" | "pnl" | "ai-budget" | "rubric" | "bookings";
 
 function money(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -126,6 +128,271 @@ function StatusBadge({ health, label }: { health: BookingHealth; label: string }
       <span className={cn("size-1.5 rounded-full", health === "recovered" ? "bg-emerald-400" : health === "approval" ? "bg-amber-400" : health === "disrupted" ? "bg-rose-400" : health === "protected" ? "bg-sky-400" : "bg-slate-400")} />
       {label}
     </span>
+  );
+}
+
+const LIVE_STAGE_STYLE: Record<
+  AdminLiveSession["stage"],
+  { label: string; tone: string; guidance: string }
+> = {
+  WAITING_FOR_INTENT: {
+    label: "Waiting",
+    tone: "border-slate-700 bg-slate-900 text-slate-400",
+    guidance: "Ask the traveler to define and protect an outcome.",
+  },
+  MONITORING: {
+    label: "Monitoring",
+    tone: "border-sky-400/25 bg-sky-400/10 text-sky-300",
+    guidance: "No intervention. The protected trip is being monitored.",
+  },
+  DISRUPTED: {
+    label: "Disrupted",
+    tone: "border-rose-400/25 bg-rose-400/10 text-rose-300",
+    guidance: "Recovery is ready to start. Watch the constraint checks and Atlas search.",
+  },
+  RECOVERING: {
+    label: "Recovering",
+    tone: "border-cyan-400/25 bg-cyan-400/10 text-cyan-300",
+    guidance: "Agent is evaluating alternatives. Intervene only if a policy gate appears.",
+  },
+  NEEDS_APPROVAL: {
+    label: "Needs approval",
+    tone: "border-amber-400/25 bg-amber-400/10 text-amber-300",
+    guidance: "Passenger approval is required before the booking action can continue.",
+  },
+  RECOVERED: {
+    label: "Recovered",
+    tone: "border-emerald-400/25 bg-emerald-400/10 text-emerald-300",
+    guidance: "Recovery settled. Review verification and fare evidence if needed.",
+  },
+  FAILED: {
+    label: "Failed",
+    tone: "border-rose-400/25 bg-rose-400/10 text-rose-300",
+    guidance: "Recovery failed safely. Review the latest decision step before retrying.",
+  },
+  DECLINED: {
+    label: "Declined",
+    tone: "border-slate-600 bg-slate-900 text-slate-300",
+    guidance: "Passenger kept the original booking. No autonomous action will continue.",
+  },
+};
+
+function secondsAgo(value: string) {
+  const delta = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 1000));
+  if (delta < 5) return "now";
+  if (delta < 60) return `${delta}s ago`;
+  return `${Math.floor(delta / 60)}m ago`;
+}
+
+function LiveMonitorView({
+  sessions,
+  liveConnected,
+  lastSyncAt,
+}: {
+  sessions: AdminLiveSession[];
+  liveConnected: boolean;
+  lastSyncAt: string | null;
+}) {
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
+  const selected =
+    sessions.find((session) => session.deviceId === selectedDeviceId) ?? sessions[0] ?? null;
+  const attentionCount = sessions.filter((session) =>
+    ["DISRUPTED", "NEEDS_APPROVAL", "FAILED"].includes(session.stage)
+  ).length;
+
+  return (
+    <div className="space-y-5">
+      <section className="grid gap-3 sm:grid-cols-3">
+        <MetricCard
+          label="Live Sessions"
+          value={String(sessions.length)}
+          note="Traveler journeys currently persisted to the demo control plane."
+          icon={Radio}
+          tone="cyan"
+          badge={liveConnected ? "LIVE" : "RECONNECTING"}
+        />
+        <MetricCard
+          label="Needs Attention"
+          value={String(attentionCount)}
+          note="Disrupted, approval-gated or failed journeys requiring operator awareness."
+          icon={Activity}
+          tone={attentionCount > 0 ? "warning" : "success"}
+        />
+        <MetricCard
+          label="Sync"
+          value={liveConnected ? "1.5s" : "—"}
+          note={lastSyncAt ? `Last server refresh ${secondsAgo(lastSyncAt)}.` : "Waiting for live server state."}
+          icon={RefreshCw}
+          tone={liveConnected ? "success" : "default"}
+        />
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr]">
+        <div className="ti-surface overflow-hidden rounded-2xl">
+          <div className="flex items-center justify-between border-b border-slate-800/80 px-4 py-3.5">
+            <div>
+              <p className="label-caps text-sky-400">Traveler Sessions</p>
+              <h2 className="mt-0.5 text-sm font-semibold text-white">Live booking activity</h2>
+            </div>
+            <span className="flex items-center gap-1.5 font-mono text-[10px] text-emerald-300">
+              <span className="size-1.5 animate-pulse rounded-full bg-emerald-400" />
+              AUTO REFRESH
+            </span>
+          </div>
+
+          <div className="max-h-[560px] divide-y divide-slate-800/70 overflow-y-auto">
+            {sessions.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-500">
+                No traveler activity yet. Open the Traveler view and start a demo.
+              </div>
+            ) : (
+              sessions.map((session) => {
+                const style = LIVE_STAGE_STYLE[session.stage];
+                const active = selected?.deviceId === session.deviceId;
+                return (
+                  <button
+                    key={session.deviceId}
+                    type="button"
+                    onClick={() => setSelectedDeviceId(session.deviceId)}
+                    className={cn(
+                      "w-full px-4 py-3.5 text-left transition",
+                      active ? "bg-sky-400/[0.07]" : "hover:bg-slate-900/45"
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-semibold text-slate-200">
+                          {session.travelerLabel} · {session.route}
+                        </p>
+                        <p className="mt-1 font-mono text-[10px] text-slate-500">
+                          {session.flightNo} · {secondsAgo(session.updatedAt)}
+                        </p>
+                      </div>
+                      <span className={cn("shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold", style.tone)}>
+                        {style.label}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        <div className="ti-surface rounded-2xl p-5 sm:p-6">
+          {selected ? (
+            <>
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-800/80 pb-4">
+                <div>
+                  <p className="label-caps text-cyan-400">Operator Focus</p>
+                  <h2 className="mt-1 text-lg font-semibold text-white">
+                    {selected.travelerLabel} · {selected.route}
+                  </h2>
+                  <p className="mt-1 font-mono text-[10px] text-slate-500">
+                    {selected.tripId} · updated {secondsAgo(selected.updatedAt)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={cn("rounded-full border px-2.5 py-1 text-[10px] font-bold", LIVE_STAGE_STYLE[selected.stage].tone)}>
+                    {LIVE_STAGE_STYLE[selected.stage].label}
+                  </span>
+                  <Link
+                    href="/?resume=1"
+                    className="rounded-lg border border-sky-400/25 bg-sky-400/10 px-3 py-1.5 text-[10px] font-semibold text-sky-300 transition hover:bg-sky-400/15"
+                  >
+                    Open Traveler
+                  </Link>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-2 sm:grid-cols-4">
+                <div className="rounded-xl border border-slate-800 bg-slate-950/45 p-3">
+                  <p className="text-[9px] uppercase tracking-wider text-slate-500">Arrival</p>
+                  <p className="mt-1 font-mono text-sm font-bold text-slate-200">≤ {selected.latestArrival}</p>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-slate-950/45 p-3">
+                  <p className="text-[9px] uppercase tracking-wider text-slate-500">Baggage</p>
+                  <p className="mt-1 font-mono text-sm font-bold text-slate-200">≥ {selected.minBaggageKg}kg</p>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-slate-950/45 p-3">
+                  <p className="text-[9px] uppercase tracking-wider text-slate-500">Authority</p>
+                  <p className="mt-1 font-mono text-sm font-bold text-emerald-300">${selected.maxExtraSpendUsd}</p>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-slate-950/45 p-3">
+                  <p className="text-[9px] uppercase tracking-wider text-slate-500">Mode</p>
+                  <p className="mt-1 font-mono text-sm font-bold text-sky-300">{selected.autopilot ? "AUTO" : "MANUAL"}</p>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-xl border border-amber-400/15 bg-amber-400/[0.04] p-3.5">
+                <p className="label-caps text-amber-300">Operator Guidance</p>
+                <p className="mt-1 text-xs text-slate-300">{LIVE_STAGE_STYLE[selected.stage].guidance}</p>
+                {selected.approval && (
+                  <p className="mt-1 font-mono text-[10px] text-amber-300">Gate: {selected.approval}</p>
+                )}
+              </div>
+
+              <div className="mt-4">
+                <div className="flex items-center justify-between">
+                  <p className="label-caps text-sky-400">Decision Stream</p>
+                  <span className="font-mono text-[10px] text-slate-500">
+                    {selected.playedSteps.length} steps
+                  </span>
+                </div>
+                <div className="mt-3 space-y-2">
+                  <div className="flex gap-3 rounded-xl border border-slate-800 bg-slate-950/35 p-3">
+                    <span className="mt-1 size-2 shrink-0 rounded-full bg-sky-400" />
+                    <div>
+                      <p className="text-xs font-semibold text-slate-200">Outcome contract</p>
+                      <p className="mt-0.5 text-[10px] text-slate-500">
+                        {selected.isProtected ? "Protected and persisted" : "Waiting for traveler input"}
+                      </p>
+                    </div>
+                  </div>
+                  {selected.exceptionsCount > 0 && (
+                    <div className="flex gap-3 rounded-xl border border-rose-400/15 bg-rose-400/[0.03] p-3">
+                      <span className="mt-1 size-2 shrink-0 rounded-full bg-rose-400" />
+                      <div>
+                        <p className="text-xs font-semibold text-rose-300">Schedule disruption</p>
+                        <p className="mt-0.5 text-[10px] text-slate-500">Airline change violated the protected outcome.</p>
+                      </div>
+                    </div>
+                  )}
+                  {selected.playedSteps.map((step) => (
+                    <div key={step.id} className="flex gap-3 rounded-xl border border-slate-800 bg-slate-950/35 p-3">
+                      <span className={cn(
+                        "mt-1 size-2 shrink-0 rounded-full",
+                        step.tone === "success" ? "bg-emerald-400" : step.tone === "danger" ? "bg-rose-400" : step.tone === "warning" ? "bg-amber-400" : "bg-cyan-400"
+                      )} />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-slate-200">{step.title}</p>
+                        <p className="mt-0.5 text-[10px] leading-relaxed text-slate-500">{step.detail}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {selected.outcomeStatus && (
+                    <div className="flex gap-3 rounded-xl border border-emerald-400/15 bg-emerald-400/[0.03] p-3">
+                      <span className="mt-1 size-2 shrink-0 rounded-full bg-emerald-400" />
+                      <div>
+                        <p className="text-xs font-semibold text-slate-200">Outcome: {selected.outcomeStatus}</p>
+                        <p className="mt-0.5 text-[10px] text-slate-500">
+                          {selected.selectedFlight ? `Selected ${selected.selectedFlight}` : "No replacement flight settled"}
+                          {selected.verificationSource ? ` · ${selected.verificationSource}` : ""}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex min-h-72 items-center justify-center text-xs text-slate-500">
+              Select a traveler session to inspect live activity.
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -1090,14 +1357,52 @@ function BookingsLedgerView({ report }: { report: OperationsReport }) {
 }
 
 /** MAIN ADMIN DASHBOARD EXPORT */
-export function AdminDashboard({ report }: { report: OperationsReport }) {
-  const [tab, setTab] = useState<AdminTab>("outcomes");
+export function AdminDashboard({
+  report: initialReport,
+  initialSessions,
+}: {
+  report: OperationsReport;
+  initialSessions: AdminLiveSession[];
+}) {
+  const [tab, setTab] = useState<AdminTab>("live");
+  const [report, setReport] = useState(initialReport);
+  const [sessions, setSessions] = useState(initialSessions);
+  const [liveConnected, setLiveConnected] = useState(true);
+  const [lastSyncAt, setLastSyncAt] = useState<string | null>(initialReport.generatedAt);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const refresh = async () => {
+      try {
+        const response = await fetch("/api/admin/live", { cache: "no-store" });
+        if (!response.ok) throw new Error("Live admin state unavailable");
+        const payload = (await response.json()) as AdminLivePayload;
+        if (cancelled || !payload.ok) return;
+        setReport(payload.report);
+        setSessions(payload.sessions);
+        setLastSyncAt(payload.generatedAt);
+        setLiveConnected(true);
+      } catch {
+        if (!cancelled) setLiveConnected(false);
+      }
+    };
+
+    void refresh();
+    const interval = window.setInterval(refresh, 1500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
+
   const sourceLabel = useMemo(
     () => (report.dataMode === "device-evidence" ? "SQLite device evidence" : "Deterministic demo cohort"),
     [report.dataMode]
   );
 
   const tabs: Array<{ id: AdminTab; label: string; icon: typeof Activity }> = [
+    { id: "live", label: "Live Monitor", icon: Radio },
     { id: "outcomes", label: "Outcome Operations", icon: ShieldCheck },
     { id: "pnl", label: "Recovery Economics", icon: CircleDollarSign },
     { id: "ai-budget", label: "AI Governance", icon: Cpu },
@@ -1141,7 +1446,7 @@ export function AdminDashboard({ report }: { report: OperationsReport }) {
 
       {/* Tab Switcher & Status Bar */}
       <div className="flex flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-950/40 p-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-5">
+        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-6">
           {tabs.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -1164,14 +1469,21 @@ export function AdminDashboard({ report }: { report: OperationsReport }) {
             <Database className="size-3.5 text-sky-400" />
             {sourceLabel}
           </span>
-          <span className="flex items-center gap-1.5">
-            <RefreshCw className="size-3.5 text-emerald-400" />
-            Live server state
+          <span className={cn("flex items-center gap-1.5", liveConnected ? "text-emerald-400" : "text-amber-400")}>
+            <RefreshCw className={cn("size-3.5", liveConnected && "animate-spin [animation-duration:3s]")} />
+            {liveConnected ? "Live · 1.5s" : "Reconnecting"}
           </span>
         </div>
       </div>
 
       {/* Render Active View */}
+      {tab === "live" && (
+        <LiveMonitorView
+          sessions={sessions}
+          liveConnected={liveConnected}
+          lastSyncAt={lastSyncAt}
+        />
+      )}
       {tab === "outcomes" && <OutcomeOperationsView report={report} />}
       {tab === "pnl" && <TravelPnLView report={report} />}
       {tab === "ai-budget" && <AITokenBudgetView report={report} />}
