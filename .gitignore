@@ -23,6 +23,9 @@
 # local SQLite device persistence
 /.data/
 
+# local model fine-tuning artifacts
+/.artifacts/
+
 # misc
 .DS_Store
 *.pem

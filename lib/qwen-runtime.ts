@@ -14,6 +14,22 @@ export function isLocalQwenConfigured(): boolean {
   return Boolean(process.env.LOCAL_QWEN_CHAT_COMPLETIONS_URL?.trim());
 }
 
+export function localQwenModelsEndpoint(chatCompletionsEndpoint: string): string {
+  const url = new URL(chatCompletionsEndpoint);
+  url.pathname = url.pathname.replace(/\/chat\/completions\/?$/, "/models");
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}
+
+export function localQwenEndpointHost(chatCompletionsEndpoint: string): string {
+  try {
+    return new URL(chatCompletionsEndpoint).host;
+  } catch {
+    return "self-hosted";
+  }
+}
+
 /**
  * TripIntent uses the open-weight Qwen3.5-27B model through any local/self-hosted
  * OpenAI-compatible server (vLLM, SGLang, llama.cpp-compatible gateway, etc.).

@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   BarChart3,
   CircleAlert,
+  Cpu,
   FlaskConical,
   RadioTower,
   Target,
@@ -12,6 +14,95 @@ import {
 } from "lucide-react";
 import { useDemo } from "@/lib/demo-store";
 import { cn } from "@/lib/utils";
+
+interface AIRuntimeHealth {
+  configured: boolean;
+  connected: boolean;
+  modelReady: boolean;
+  runtime: "self-hosted-qwen" | "deterministic-fallback";
+  model: string | null;
+  endpointHost: string | null;
+  latencyMs: number | null;
+}
+
+function AIRuntimeBadge() {
+  const [health, setHealth] = useState<AIRuntimeHealth | null>(null);
+
+  useEffect(() => {
+    let disposed = false;
+
+    const refresh = async () => {
+      try {
+        const response = await fetch("/api/ai/health", { cache: "no-store" });
+        if (!response.ok) throw new Error("AI health unavailable");
+        const next = (await response.json()) as AIRuntimeHealth;
+        if (!disposed) setHealth(next);
+      } catch {
+        if (!disposed) setHealth(null);
+      }
+    };
+
+    void refresh();
+    const timer = window.setInterval(refresh, 30_000);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  const ready = Boolean(health?.connected && health.modelReady);
+  const configuredButDown = Boolean(health?.configured && !ready);
+  const label = ready
+    ? "Qwen Local · 27B ready"
+    : configuredButDown
+      ? "Qwen Local · unavailable"
+      : health
+        ? "Deterministic · AI optional"
+        : "AI runtime · checking";
+  const title = ready
+    ? `${health?.model ?? "Qwen"} @ ${health?.endpointHost ?? "self-hosted"}${health?.latencyMs !== null ? ` · ${health?.latencyMs}ms health probe` : ""}`
+    : configuredButDown
+      ? `Configured model ${health?.model ?? "Qwen"} is not reachable; Demo mode can fall back deterministically.`
+      : "No self-hosted Qwen endpoint is configured; Demo mode remains deterministic and reproducible.";
+
+  return (
+    <div
+      className={cn(
+        "hidden items-center gap-2 rounded-full border px-3 py-1 xl:flex",
+        ready
+          ? "border-emerald-400/20 bg-emerald-400/5"
+          : configuredButDown
+            ? "border-amber-400/20 bg-amber-400/5"
+            : "border-slate-700 bg-slate-900/60"
+      )}
+      title={title}
+      aria-label={`AI runtime: ${label}`}
+    >
+      <Cpu
+        className={cn(
+          "size-3.5",
+          ready
+            ? "text-emerald-300"
+            : configuredButDown
+              ? "text-amber-300"
+              : "text-slate-400"
+        )}
+      />
+      <span
+        className={cn(
+          "font-mono text-[10px] font-medium",
+          ready
+            ? "text-emerald-300"
+            : configuredButDown
+              ? "text-amber-300"
+              : "text-slate-400"
+        )}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
 
 /** Route mark: origin dot → path → destination pin, drawn with CSS only. */
 function RouteMark() {
@@ -139,9 +230,11 @@ export function NavHeader() {
             </button>
           </div>
 
+          <AIRuntimeBadge />
+
           <div
             className={cn(
-              "hidden items-center gap-2 rounded-full border px-3 py-1 lg:flex",
+              "hidden items-center gap-2 rounded-full border px-3 py-1 2xl:flex",
               runtimeError
                 ? "border-rose-400/20 bg-rose-400/5"
                 : runtimeMode === "live"

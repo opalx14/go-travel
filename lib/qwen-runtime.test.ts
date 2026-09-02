@@ -4,6 +4,8 @@ import {
   LOCAL_QWEN_MODEL,
   isLocalQwenConfigured,
   localQwenConfig,
+  localQwenEndpointHost,
+  localQwenModelsEndpoint,
 } from "./qwen-runtime";
 
 const ORIGINAL_ENV = {
@@ -54,5 +56,15 @@ describe("local Qwen runtime", () => {
     process.env.LOCAL_QWEN_TIMEOUT_MS = "999999";
 
     expect(localQwenConfig()?.timeoutMs).toBe(DEFAULT_LOCAL_QWEN_TIMEOUT_MS);
+  });
+
+  test("derives a safe model-catalog endpoint and public host", () => {
+    const endpoint =
+      "http://127.0.0.1:8080/v1/chat/completions?token=do-not-expose";
+
+    expect(localQwenModelsEndpoint(endpoint)).toBe(
+      "http://127.0.0.1:8080/v1/models"
+    );
+    expect(localQwenEndpointHost(endpoint)).toBe("127.0.0.1:8080");
   });
 });

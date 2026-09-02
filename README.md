@@ -24,6 +24,44 @@ $$\text{Disruption Signal} \longrightarrow \text{Outcome Contract} \longrightarr
 
 ---
 
+## Domain Model: Qwen3.5-27B for Travel Recovery
+
+TripIntent uses **`mlx-community/Qwen3.5-27B-4bit`** as its local/self-hosted language model on Apple Silicon. The model is intentionally **not** the policy engine. Its role is bounded to language-heavy tasks where an LLM adds value while deterministic code retains authority:
+
+- **Traveler intent normalization** — English/Vietnamese travel briefs → a strict Outcome Contract (`latestArrival`, flexibility, baggage, delegated extra spend, autopilot).
+- **Read-only decision explanation** — explains why the deterministic recovery engine selected/rejected options without changing flight, fare, constraints, or approval state.
+- **Privacy-first inference** — PNR, labeled identity fields, payment-card data, email, and phone are redacted before model inference.
+- **Deployment resilience** — the Mac can run Qwen locally; GitHub/VPS do not ship model weights and Demo mode remains usable through deterministic fallback.
+
+### TripIntent LoRA specialization
+
+The repository also includes a small, auditable MLX-LM LoRA dataset and training entry point under `training/qwen-tripintent/`. The specialization follows the hackathon theme rather than trying to teach the model to make unsafe booking decisions:
+
+1. Multilingual disruption-recovery intent extraction.
+2. Outcome-over-price reasoning language.
+3. Human-in-the-loop / spending-authority explanations.
+4. Atlas verification and fare-change checkpoint explanations.
+5. Safe failure behavior when no policy-valid recovery exists.
+
+The LoRA dataset deliberately contains **no real passenger PII and no live booking credentials**. Policy math, Atlas fare verification, and booking authority remain outside the learned model.
+
+```bash
+# Stop the inference server first so the 32 GB Mac has maximum unified memory.
+TRIPINTENT_QWEN_ITERS=40 bash scripts/qwen-lora-train.sh
+
+# Serve the base model with the trained TripIntent adapter.
+mlx_lm.server \
+  --model mlx-community/Qwen3.5-27B-4bit \
+  --adapter-path .artifacts/qwen-tripintent-lora \
+  --host 127.0.0.1 \
+  --port 8080 \
+  --chat-template-args '{"enable_thinking":false}'
+```
+
+The committed train/validation/test files are intentionally small and reviewable for the hackathon. They are a **domain-adaptation seed set**, not a claim of a production-scale training corpus. A production path would expand this set with consented/de-identified recovery conversations, harder multilingual edge cases, and offline evaluation against deterministic ground truth before promoting an adapter.
+
+---
+
 ## Architecture & Workflow
 
 ```text
@@ -120,6 +158,7 @@ Navigate to `/operations` in the app to inspect:
 - **Deterministic Safety Layer**: hard travel constraints and delegated spending authority are enforced in TypeScript, not delegated to the LLM
 - **Model Privacy Boundary**: traveler text is redacted before it reaches the configured inference endpoint; PNR, labeled identity fields, payment-card numbers, email addresses, and phone numbers are not intentionally forwarded
 - **Token Control**: intent extraction uses one structured Qwen call with a 180-token output cap; explanation uses one read-only call capped at 300 tokens, with deterministic fallbacks for both paths
+- **AI Runtime Evidence**: `/api/ai/health` probes the self-hosted OpenAI-compatible model catalog and reports whether Qwen is configured, reachable, and ready; the header surfaces Qwen Local vs deterministic fallback without exposing secrets
 - **Deployment Split**: model weights live only in the local Hugging Face/MLX cache; GitHub and the VPS contain application code only and do not require the 27B model to boot
 - **Persistence**: device-scoped SQLite database
 - **P&L Model**: 12% demo service-margin assumption (minimum $6); AP/AR modeled transparently
@@ -137,6 +176,7 @@ Navigate to `/operations` in the app to inspect:
 | Cheapest can be rejected | Candidate evaluation shows deadline/baggage violations | `lib/policy-engine.ts`, `lib/recovery-engine.ts` | `lib/policy-engine.test.ts`, `lib/recovery-engine.test.ts` |
 | Atlas is used for travel evidence | Search/verification source is labeled per candidate and fare | `app/api/atlas/*`, `lib/atlas/*` | Atlas adapter/parser/client tests + `bun run atlas:smoke` |
 | LLM cannot override safety | Decision is computed before Qwen explanation is requested | `lib/recovery-engine.ts`, `app/api/agent/explain/route.ts` | `lib/decision-explainer.test.ts` |
+| Self-hosted AI is verifiable | Header badge and `/api/ai/health` show configured / connected / model-ready state | `app/api/ai/health/route.ts`, `components/nav-header.tsx`, `lib/qwen-runtime.ts` | `lib/qwen-runtime.test.ts`, `bun run qwen:smoke` |
 | Human-in-the-loop authority gate | `$10` demo scenario pauses before over-authority action | `lib/recovery-engine.ts`, `components/action-zone.tsx` | recovery authority/approval tests |
 | Operator observability | Admin shows the same persisted traveler decision stream | `app/api/admin/live/route.ts`, `lib/admin-live.ts`, `components/admin-dashboard.tsx` | SQLite-backed runtime state |
 
