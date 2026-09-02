@@ -648,7 +648,7 @@ function buildRubricScorecard(): RubricScorecard {
       weightMax: 4,
       score: 4,
       description: "Extracts structured contract parameters from unstructured traveler text across English and Vietnamese via Alibaba Cloud Qwen.",
-      evidence: "Dual parser with Qwen 2.5 Flash on DashScope + deterministic regex fallback.",
+      evidence: "Dual parser with a configured Qwen model on DashScope + deterministic regex fallback.",
       status: "verified",
     },
     {
@@ -695,7 +695,7 @@ function buildRubricScorecard(): RubricScorecard {
       title: "Alibaba Cloud DashScope & Token Efficiency",
       weightMax: 4,
       score: 4,
-      description: "Leverages DashScope Qwen 2.5 with optimized prompt templates and strict token budgets (< 0.05% of travel gross margin).",
+      description: "Leverages Qwen via DashScope with optimized prompt templates and strict token budgets (< 0.05% of travel gross margin).",
       evidence: "Telemetry tracking: ~480 tokens/case ($0.0032 compute cost vs $99.68 protected).",
       status: "verified",
     },

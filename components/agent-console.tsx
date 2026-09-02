@@ -1,8 +1,13 @@
 "use client";
 
 import {
+  Bot,
+  CircleDot,
+  DatabaseZap,
   LoaderCircle,
+  Scale,
   ShieldCheck,
+  Sparkles,
   TriangleAlert,
 } from "lucide-react";
 import { AgentPipeline } from "@/components/agent-pipeline";
@@ -67,6 +72,105 @@ function StatusChip() {
   );
 }
 
+function ProvenanceRail() {
+  const { phase, intentSource, activeRun, outcome } = useDemo();
+  const run = outcome ?? activeRun;
+  const hasSearchEvidence = Boolean(run?.evaluations.length);
+  const searchSource = run?.evaluations.some(
+    ({ option }) => option.source === "ATLAS_SANDBOX"
+  )
+    ? "Atlas Sandbox"
+    : hasSearchEvidence
+      ? "Simulated fallback"
+      : "Pending";
+  const reasoning = run?.reasoning;
+
+  const items = [
+    {
+      label: "Intent",
+      value:
+        intentSource === "QWEN"
+          ? "Qwen"
+          : intentSource
+            ? "Deterministic fallback"
+            : "Pending",
+      detail: "Natural-language contract",
+      icon: Bot,
+      active: Boolean(intentSource),
+    },
+    {
+      label: "Disruption",
+      value: phase === "idle" ? "Demo signal armed" : "Simulated event",
+      detail: "Never claimed as Atlas data",
+      icon: CircleDot,
+      active: phase !== "idle",
+    },
+    {
+      label: "Search",
+      value: searchSource,
+      detail: "Replacement inventory",
+      icon: DatabaseZap,
+      active: hasSearchEvidence,
+    },
+    {
+      label: "Decision",
+      value: run ? "Deterministic policy" : "Pending",
+      detail: "Deadline · baggage · authority",
+      icon: Scale,
+      active: Boolean(run),
+    },
+    {
+      label: "Explanation",
+      value:
+        reasoning?.source === "QWEN"
+          ? `Qwen${reasoning.model ? ` · ${reasoning.model}` : ""}`
+          : reasoning
+            ? "Deterministic fallback"
+            : "Pending",
+      detail: "Read-only rationale",
+      icon: Sparkles,
+      active: Boolean(reasoning),
+    },
+  ];
+
+  return (
+    <div className="grid gap-2 border-b bg-muted/20 px-5 py-3 sm:grid-cols-5">
+      {items.map((item) => {
+        const Icon = item.icon;
+        return (
+          <div
+            key={item.label}
+            className={cn(
+              "rounded-lg border px-2.5 py-2 transition-colors",
+              item.active
+                ? "border-primary/20 bg-background/80"
+                : "border-border/70 bg-background/35"
+            )}
+          >
+            <div className="flex items-center gap-1.5">
+              <Icon
+                className={cn(
+                  "size-3",
+                  item.active ? "text-primary" : "text-muted-foreground/55"
+                )}
+              />
+              <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                {item.label}
+              </span>
+            </div>
+            <p className="mt-1 truncate text-[11px] font-semibold text-foreground">
+              {item.value}
+            </p>
+            <p className="mt-0.5 truncate text-[9px] text-muted-foreground">
+              {item.detail}
+            </p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /**
  * Agent decision console: the same seven-stage pipeline runs on every
  * disruption, with the candidate evaluation and the policy gate revealed in
@@ -108,6 +212,8 @@ export function AgentConsole() {
           </p>
         </div>
       </header>
+
+      <ProvenanceRail />
 
       <div className="grid gap-6 px-5 py-5 lg:grid-cols-[184px_1fr] lg:gap-8">
         <AgentPipeline stages={stages} />

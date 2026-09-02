@@ -2,7 +2,8 @@
 
 > **Autonomous Disruption Recovery & Intelligent Fulfilment Layer for Travel Sellers**  
 > *Built for the Alibaba Cloud × Atlas × Qoder Agentic AI Hackathon 2026*  
-> **Primary Track**: **Flights & Aviation** (with Fintech P&L Economics & Data Provenance)
+> **Primary Track**: **Flights & Aviation**  
+> Supporting layers: recovery economics, audit provenance, and operator observability
 
 ---
 
@@ -41,6 +42,9 @@ Atlas Flight Booking Skill / CLI
   ├─ 3. Provider Fare Verification & Price Re-check
   └─ 4. Explicit Price-Increase Confirmation Safety Gate
   ↓
+Qwen Decision Explanation (read-only)
+  └─ Explains selected / rejected options without changing the deterministic result
+  ↓
 Fulfilment & Post-Booking Operations (ATRIP Model)
   ├─ Ticketing SLA (<5 min adherence)
   ├─ Revenue Protected Hero KPI ($89 retained)
@@ -64,6 +68,9 @@ Naive AI agents pick the cheapest flight. TripIntent prioritizes the **traveler'
 The agent never spends blindly:
 - If extra cost $\le$ `maxExtraSpendUsd` + Autopilot ON $\rightarrow$ **Autonomous Execution**.
 - If extra cost $>$ `maxExtraSpendUsd` or Fare increased $\rightarrow$ **Passenger Approval Gate**.
+- Qwen can explain *why* a recovery was selected or rejected, but it cannot override the deterministic policy decision.
+
+The traveler demo includes both an autonomous `$50` authority scenario and a `$10` approval-gate scenario. The desktop **Judge Fast Path** can launch either scenario in one click while still running the same Qwen intent parser, simulated disruption event, Atlas search/verification, deterministic policy gate, and read-only Qwen explanation.
 
 ### 4. Margin & Revenue Protection (Business P&L)
 The `/operations` dashboard elevates **"Revenue Protected by Autonomous Recovery"** as the #1 Hero KPI:
@@ -94,19 +101,37 @@ Navigate to `/operations` in the app to inspect:
 ## Provenance & Attribution
 
 - **Development Tooling**: Qoder IDE
-- **LLM Intent Parser**: Qwen via Alibaba Cloud DashScope (`qwen-flash`) with deterministic fallback
-- **Flight & Retailing Infrastructure**: Atlas Flight Booking Skill & Sandbox
-- **Persistence**: Device-scoped SQLite database
+- **LLM Intent Parser**: Qwen via Alibaba Cloud DashScope (`QWEN_MODEL`, default `qwen-flash`) with deterministic fallback
+- **LLM Decision Explanation**: the same configured Qwen model explains an already-computed deterministic decision; it cannot change selection, policy, price, or approval state
+- **Disruption Signal**: simulated schedule-change event for the hackathon scenario; never presented as Atlas monitoring data
+- **Flight & Retailing Infrastructure**: Atlas Flight Booking Skill & Sandbox for search, offer verification, baggage lookup, and price re-check
+- **Deterministic Safety Layer**: hard travel constraints and delegated spending authority are enforced in TypeScript, not delegated to the LLM
+- **Persistence**: device-scoped SQLite database
 - **P&L Model**: 12% demo service-margin assumption (minimum $6); AP/AR modeled transparently
 
-*Note: This is a hackathon demonstration project operating against the Atlas Sandbox environment. Live order placement and settlement remain modeled.*
+*Note: This is a hackathon demonstration project operating against the Atlas Sandbox environment. Live order placement, payment, ticket issuance, and settlement remain modeled.*
+
+---
+
+## Judge Evidence Map
+
+| Claim | Runtime evidence | Code path | Verification |
+| --- | --- | --- | --- |
+| Natural-language outcome contract | Qwen / deterministic source shown in the UI | `app/api/intent/parse/route.ts`, `lib/intent-parser.ts` | `lib/intent-parser.test.ts` |
+| Cheapest can be rejected | Candidate evaluation shows deadline/baggage violations | `lib/policy-engine.ts`, `lib/recovery-engine.ts` | `lib/policy-engine.test.ts`, `lib/recovery-engine.test.ts` |
+| Atlas is used for travel evidence | Search/verification source is labeled per candidate and fare | `app/api/atlas/*`, `lib/atlas/*` | Atlas adapter/parser/client tests + `bun run atlas:smoke` |
+| LLM cannot override safety | Decision is computed before Qwen explanation is requested | `lib/recovery-engine.ts`, `app/api/agent/explain/route.ts` | `lib/decision-explainer.test.ts` |
+| Human-in-the-loop authority gate | `$10` demo scenario pauses before over-authority action | `lib/recovery-engine.ts`, `components/action-zone.tsx` | recovery authority/approval tests |
+| Operator observability | Admin shows the same persisted traveler decision stream | `app/api/admin/live/route.ts`, `lib/admin-live.ts`, `components/admin-dashboard.tsx` | SQLite-backed runtime state |
+
+The traveler-side **Agent decision console** also exposes a provenance rail: **Intent → Disruption → Search → Deterministic Decision → Read-only Explanation**.
 
 ---
 
 ## Verification & Testing
 
 ```bash
-bun test             # 87+ unit and integration tests passing
+bun test             # Unit and integration test suite
 bun run lint         # ESLint check
 bun run build        # Production bundle build
 bun run atlas:smoke  # Read-only Atlas CLI verification test
@@ -121,4 +146,4 @@ bun install
 bun run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the TripIntent passenger experience, or [http://localhost:3000/operations](http://localhost:3000/operations) for the Business Operations Control Center.
+Open [http://localhost:3020](http://localhost:3020) to view the TripIntent passenger experience, [http://localhost:3020/admin](http://localhost:3020/admin) for the live operator view, or [http://localhost:3020/operations](http://localhost:3020/operations) for the Business Operations Control Center.

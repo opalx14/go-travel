@@ -332,6 +332,22 @@ function LiveMonitorView({
                 )}
               </div>
 
+              {selected.reasoning && (
+                <div className="mt-4 rounded-xl border border-sky-400/15 bg-sky-400/[0.035] p-3.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="flex items-center gap-1.5 text-xs font-semibold text-sky-200">
+                      <BrainCircuit className="size-3.5 text-sky-400" /> Agent explanation
+                    </p>
+                    <span className="font-mono text-[9px] text-sky-300">
+                      {selected.reasoning.source === "QWEN" ? `Qwen${selected.reasoning.model ? ` · ${selected.reasoning.model}` : ""}` : "Rules fallback"}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs font-semibold text-slate-200">{selected.reasoning.headline}</p>
+                  <p className="mt-1 text-[10px] leading-relaxed text-slate-500">{selected.reasoning.selectedReason}</p>
+                  <p className="mt-1 font-mono text-[9px] text-slate-600">Explanation only · policy engine remains authoritative</p>
+                </div>
+              )}
+
               <div className="mt-4">
                 <div className="flex items-center justify-between">
                   <p className="label-caps text-sky-400">Decision Stream</p>
@@ -693,7 +709,7 @@ function TravelPnLView({ report }: { report: OperationsReport }) {
             <div className="flex items-center justify-between rounded-xl border border-slate-800/80 bg-slate-950/30 px-4 py-3 text-xs">
               <div className="flex items-center gap-2 text-slate-400">
                 <span className="flex size-5 items-center justify-center rounded-md bg-violet-400/10 text-[11px] font-bold text-violet-400">-</span>
-                <span>Alibaba Cloud DashScope (Qwen 2.5 Inference Cost)</span>
+                <span>Alibaba Cloud DashScope (Qwen Inference Cost)</span>
               </div>
               <span className="text-violet-300">-{money(pnl.totalAiComputeCostUsd)}</span>
             </div>
@@ -885,7 +901,7 @@ function AITokenBudgetView({ report }: { report: OperationsReport }) {
               <ul className="mt-2 space-y-2 text-[11px] text-slate-400">
                 <li className="flex items-start gap-2">
                   <Check className="size-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                  <span><strong>1-Shot Intent Extraction:</strong> Qwen 2.5 is called once per natural language brief to emit a strict JSON Outcome Contract.</span>
+                  <span><strong>1-Shot Intent Extraction:</strong> Qwen is called once per natural language brief to emit a strict JSON Outcome Contract.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Check className="size-3.5 text-emerald-400 shrink-0 mt-0.5" />
@@ -1505,7 +1521,7 @@ export function AdminDashboard({
           </p>
         </div>
         <span className="font-mono text-[10px] text-slate-500">
-          Atlas Sandbox · Qwen 2.5 · SQLite
+          Atlas Sandbox · Qwen · SQLite
         </span>
       </div>
     </div>

@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import type {
+  DecisionExplanation,
   DisruptionEvent,
   Flight,
   RecoveryOutcome,
@@ -33,6 +34,7 @@ import type {
   DeviceJourneySnapshot,
 } from "./device-state";
 import { remoteAtlas } from "./atlas/remote-provider";
+import { buildDeterministicDecisionExplanation } from "./decision-explainer";
 import {
   approveRecovery as executeApproval,
   declineRecovery as executeDecline,
@@ -66,6 +68,34 @@ export type PersistenceStatus = "loading" | "saving" | "saved" | "error";
 
 interface IntentParseResponse extends ParsedTravelBrief {
   ok: boolean;
+}
+
+interface DecisionExplanationResponse {
+  ok: boolean;
+  reasoning?: DecisionExplanation;
+}
+
+async function resolveDecisionExplanation(
+  outcome: RecoveryOutcome
+): Promise<DecisionExplanation> {
+  const fallback = buildDeterministicDecisionExplanation(outcome);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5_000);
+  try {
+    const response = await fetch("/api/agent/explain", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ outcome }),
+      signal: controller.signal,
+    });
+    if (!response.ok) return fallback;
+    const payload = (await response.json()) as DecisionExplanationResponse;
+    return payload.ok && payload.reasoning ? payload.reasoning : fallback;
+  } catch {
+    return fallback;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function resolveTravelBrief(
@@ -119,6 +149,7 @@ interface DemoStore {
   setAutopilot: (enabled: boolean) => void;
   setMaxExtraSpend: (usd: number) => void;
   protectTrip: (brief: string) => Promise<void>;
+  runJudgeScenario: (brief: string) => Promise<void>;
   simulateDisruption: () => void;
   findRecovery: () => void;
   approveRecovery: () => void;
@@ -356,6 +387,66 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  /**
+   * Judge fast path: compile the brief, inject the clearly-labelled simulated
+   * disruption, then run the exact same recovery engine after a short visual
+   * beat. This removes demo clicks without bypassing policy, Atlas, or Qwen.
+   */
+  const runJudgeScenario = useCallback(async (brief: string) => {
+    clearTimers();
+    const generation = ++runIdRef.current;
+    const parsed = await resolveTravelBrief(brief, intent);
+    if (generation !== runIdRef.current) return;
+
+    setIntent(parsed.intent);
+    setIntentMatchedFields(parsed.matched);
+    setIntentSource(parsed.source);
+    setIsProtected(true);
+    setPlayedSteps([]);
+    setActiveRun(null);
+    setOutcome(null);
+    setExceptions((prev) => [...prev, SCHEDULE_CHANGE_EVENT]);
+    setStats((prev) => ({ ...prev, exceptions: prev.exceptions + 1 }));
+    setPhase("disrupted");
+
+    timersRef.current.push(
+      setTimeout(() => {
+        void (async () => {
+          if (generation !== runIdRef.current) return;
+          setPhase("running");
+
+          let result: RecoveryOutcome;
+          try {
+            result = await runRecovery(ORIGINAL_FLIGHT, parsed.intent, remoteAtlas);
+          } catch (error) {
+            result = {
+              status: "FAILED",
+              event: SCHEDULE_CHANGE_EVENT,
+              evaluations: [],
+              selected: null,
+              policyCheck: null,
+              steps: [
+                {
+                  id: "step-failed",
+                  title: "Recovery failed",
+                  detail: failureMessage(error),
+                  tone: "danger",
+                },
+              ],
+            };
+          }
+
+          result = {
+            ...result,
+            reasoning: await resolveDecisionExplanation(result),
+          };
+          if (generation !== runIdRef.current) return;
+          startReplay(result);
+        })();
+      }, 1100)
+    );
+  }, [clearTimers, intent, startReplay]);
+
   /** Run the recovery engine against the live (remote) Atlas provider. */
   const findRecovery = useCallback(async () => {
     if (phase !== "disrupted") return;
@@ -387,6 +478,13 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         ],
       };
     }
+
+    // Qwen may explain the already-decided result, but it never changes the
+    // deterministic selection, policy gate, price, or approval state.
+    result = {
+      ...result,
+      reasoning: await resolveDecisionExplanation(result),
+    };
 
     // A newer generation (Reset) superseded this run — do not resurrect it.
     if (runId !== runIdRef.current) return;
@@ -463,6 +561,10 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         ],
       };
     }
+    next = {
+      ...next,
+      reasoning: await resolveDecisionExplanation(next),
+    };
     if (runId !== runIdRef.current) return;
     replayAppendedSteps(outcome, next);
   }, [outcome, phase, replayAppendedSteps]);
@@ -471,7 +573,11 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     if (phase !== "complete") return;
     if (!outcome || outcome.status !== "NEEDS_APPROVAL") return;
     setPhase("running");
-    replayAppendedSteps(outcome, executeDecline(outcome));
+    const declined = executeDecline(outcome);
+    replayAppendedSteps(outcome, {
+      ...declined,
+      reasoning: buildDeterministicDecisionExplanation(declined),
+    });
   }, [outcome, phase, replayAppendedSteps]);
 
   const setAutopilot = useCallback((enabled: boolean) => {
@@ -501,6 +607,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       setAutopilot,
       setMaxExtraSpend,
       protectTrip,
+      runJudgeScenario,
       simulateDisruption,
       findRecovery,
       approveRecovery,
@@ -525,6 +632,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       setAutopilot,
       setMaxExtraSpend,
       protectTrip,
+      runJudgeScenario,
       simulateDisruption,
       findRecovery,
       approveRecovery,

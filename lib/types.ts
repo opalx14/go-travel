@@ -153,6 +153,17 @@ export interface RecoveryStep {
   tone: StepTone;
 }
 
+/** Explanation layer: Qwen explains a deterministic decision but never controls it. */
+export interface DecisionExplanation {
+  source: "QWEN" | "DETERMINISTIC_FALLBACK";
+  model?: string;
+  headline: string;
+  selectedReason: string;
+  rejectedReason: string;
+  authorityReason: string;
+  nextAction: string;
+}
+
 /** Full outcome of one recovery run, including the decision timeline. */
 export interface RecoveryOutcome {
   status: RecoveryStatus;
@@ -169,6 +180,8 @@ export interface RecoveryOutcome {
   approvedByPassenger?: boolean;
   /** Set once the selected offer's fare was verified with the provider. */
   verification?: OfferVerification;
+  /** Optional AI explanation of the deterministic policy result. */
+  reasoning?: DecisionExplanation;
 }
 
 /** One checked-baggage option normalized from Atlas. */

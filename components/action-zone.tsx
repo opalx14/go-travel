@@ -2,6 +2,7 @@
 
 import {
   ArrowRight,
+  BrainCircuit,
   Check,
   Plane,
   SearchX,
@@ -14,6 +15,7 @@ import { Scanner } from "@/components/scanner";
 import { useDemo } from "@/lib/demo-store";
 import { authorityShortfall } from "@/lib/presentation";
 import { SCHEDULE_CHANGE_EVENT } from "@/lib/scenario";
+import type { RecoveryOutcome } from "@/lib/types";
 
 function toMinutes(value: string): number {
   const [hours, minutes] = value.split(":").map(Number);
@@ -26,6 +28,34 @@ function lateBy(arrival: string, deadline: string): string {
   const rest = minutes % 60;
   if (hours === 0) return `${rest}m late`;
   return `${hours}h ${String(rest).padStart(2, "0")}m late`;
+}
+
+function DecisionRationale({ outcome }: { outcome: RecoveryOutcome }) {
+  const reasoning = outcome.reasoning;
+  if (!reasoning) return null;
+
+  return (
+    <div className="border-t ti-divider bg-sky-500/[0.025] px-6 py-4 sm:px-8">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <BrainCircuit className="size-4 text-sky-400" />
+          <p className="text-xs font-bold text-slate-200">Decision rationale</p>
+        </div>
+        <span className="rounded-full border border-sky-400/20 bg-sky-400/10 px-2.5 py-1 font-mono text-[9px] font-semibold text-sky-300">
+          {reasoning.source === "QWEN" ? `Qwen${reasoning.model ? ` · ${reasoning.model}` : ""}` : "Deterministic fallback"}
+        </span>
+      </div>
+      <p className="mt-2 text-sm font-semibold text-slate-100">{reasoning.headline}</p>
+      <div className="mt-3 grid gap-2 text-[11px] leading-relaxed text-slate-400 sm:grid-cols-3">
+        <p><span className="font-semibold text-emerald-300">Selected:</span> {reasoning.selectedReason}</p>
+        <p><span className="font-semibold text-rose-300">Rejected:</span> {reasoning.rejectedReason}</p>
+        <p><span className="font-semibold text-amber-300">Authority:</span> {reasoning.authorityReason}</p>
+      </div>
+      <p className="mt-2 font-mono text-[9px] text-slate-500">
+        Explanation only · deterministic policy remains authoritative
+      </p>
+    </div>
+  );
 }
 
 /**
@@ -201,6 +231,8 @@ export function ActionZone() {
             </div>
           </div>
 
+          <DecisionRationale outcome={outcome} />
+
           <div className="border-t ti-divider bg-white/[0.018] px-6 py-3.5 text-center text-xs text-muted-foreground sm:px-8">
             Verified recovery is ready for the next booking step · Monitored by TripIntent.
           </div>
@@ -230,6 +262,9 @@ export function ActionZone() {
             <p className="mt-1 max-w-md text-sm text-muted-foreground">
               The fare increased after selection. Approve the new price to keep this recovery ready for the next booking step.
             </p>
+            <div className="mt-5 w-full max-w-3xl text-left">
+              <DecisionRationale outcome={outcome} />
+            </div>
             <div className="mt-5 flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:justify-center">
               <Button size="lg" onClick={approveRecovery}>
                 Approve new price
@@ -260,6 +295,9 @@ export function ActionZone() {
               ? `Your auto limit is $${intent.maxExtraSpendUsd}. This recovery is $${shortfall} above it.`
               : "Trip Autopilot is off."}
           </p>
+          <div className="mt-5 w-full max-w-3xl text-left">
+            <DecisionRationale outcome={outcome} />
+          </div>
           <div className="mt-5 flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:justify-center">
             <Button size="lg" onClick={approveRecovery}>
               Approve ${selected.extraCostUsd}

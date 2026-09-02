@@ -1,5 +1,5 @@
 import type { DeviceJourneyRow } from "./device-state-db";
-import type { RecoveryStep } from "./types";
+import type { DecisionExplanation, RecoveryStep } from "./types";
 import type { OperationsReport } from "./operations-finance";
 
 export type AdminJourneyStage =
@@ -32,6 +32,7 @@ export interface AdminLiveSession {
   approval: string | null;
   outcomeStatus: string | null;
   verificationSource: string | null;
+  reasoning: DecisionExplanation | null;
 }
 
 export interface AdminLivePayload {
@@ -82,5 +83,6 @@ export function toAdminLiveSession(row: DeviceJourneyRow): AdminLiveSession | nu
     approval: snapshot.outcome?.approval ?? null,
     outcomeStatus: snapshot.outcome?.status ?? null,
     verificationSource: snapshot.outcome?.verification?.source ?? null,
+    reasoning: snapshot.outcome?.reasoning ?? null,
   };
 }

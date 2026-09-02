@@ -5,9 +5,10 @@ import { ALTERNATIVES, ATLAS_SEARCH } from "@/lib/scenario";
  * POST /api/atlas/search
  *
  * Drives the Atlas CLI server-side (search params are fixed by the demo
- * scenario; only the departure date is resolved per request). Every failure
- * — timeout, CLI error, service/auth codes — falls back to the simulated
- * candidates. Raw errors and stderr never reach the client.
+ * scenario; only the departure date is resolved per request). Atlas results
+ * are preferred, while transport/tool failures or a valid zero-inventory
+ * response fall back to clearly-labelled simulated candidates so the demo
+ * remains deterministic. Raw errors and stderr never reach the client.
  */
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -34,7 +35,18 @@ export async function POST() {
       adults: ATLAS_SEARCH.adults,
     });
 
-    // SEARCH_NO_RESULTS is an empty success — no fallback for it.
+    if (result.candidates.length === 0) {
+      return Response.json({
+        ok: true,
+        candidates: ALTERNATIVES,
+        searchId: result.searchId,
+        offerCount: result.offerCount,
+        returnedCount: result.returnedCount,
+        fallback: true,
+        fallbackReason: "ATLAS_NO_INVENTORY",
+      });
+    }
+
     return Response.json({
       ok: true,
       candidates: result.candidates,
