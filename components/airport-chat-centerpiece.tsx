@@ -46,6 +46,8 @@ export function AirportChatCenterpiece({ inline = false }: { inline?: boolean })
     intent,
     phase,
     outcome,
+    runtimeMode,
+    runtimeError,
     protectTrip,
     runJudgeScenario,
     simulateDisruption,
@@ -274,6 +276,13 @@ export function AirportChatCenterpiece({ inline = false }: { inline?: boolean })
           </div>
         </div>
 
+        {runtimeError && (
+          <div className="mt-2 rounded-xl border border-rose-400/20 bg-rose-400/[0.06] px-3 py-2 text-[11px] text-rose-200">
+            <span className="font-semibold">{runtimeMode === "live" ? "Live mode:" : "Runtime:"}</span>{" "}
+            {runtimeError}. Switch to Demo for fallback-safe judging, or configure the connected providers and retry.
+          </div>
+        )}
+
         {/* Judge fast path: one click shows autonomy vs approval without bypassing the real engine. */}
         <div className="mt-3 hidden rounded-xl border border-violet-400/15 bg-violet-400/[0.04] p-2.5 sm:block">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -337,7 +346,7 @@ export function AirportChatCenterpiece({ inline = false }: { inline?: boolean })
         <div className="mt-3.5 hidden items-center justify-between border-t ti-divider pt-2.5 font-mono text-[10px] text-slate-500 sm:flex">
           <span className="flex items-center gap-1 text-slate-300">
             <Check className="size-3 text-emerald-400" />
-            Atlas Sandbox verified booking
+            {runtimeMode === "live" ? "Live providers required · no simulated fallback" : "Demo default · connected providers with safe fallback"}
           </span>
           <span className="flex items-center gap-1 text-slate-300">
             <Check className="size-3 text-sky-400" />

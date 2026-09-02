@@ -4,6 +4,7 @@ import {
   type DecisionExplanationCandidate,
 } from "@/lib/decision-explainer";
 import type { RecoveryOutcome } from "@/lib/types";
+import { runtimeModeFromRequest } from "@/lib/runtime-mode";
 
 const DEFAULT_QWEN_ENDPOINT =
   "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions";
@@ -84,6 +85,7 @@ function facts(outcome: RecoveryOutcome) {
 }
 
 export async function POST(request: Request) {
+  const runtimeMode = runtimeModeFromRequest(request);
   let body: ExplainBody;
   try {
     body = (await request.json()) as ExplainBody;
@@ -98,8 +100,14 @@ export async function POST(request: Request) {
   const fallback = buildDeterministicDecisionExplanation(body.outcome);
   const apiKey = process.env.DASHSCOPE_API_KEY;
   if (!apiKey) {
+    if (runtimeMode === "live") {
+      return Response.json(
+        { ok: false, error: "LIVE_QWEN_NOT_CONFIGURED", runtimeMode },
+        { status: 503, headers: { "Cache-Control": "no-store" } }
+      );
+    }
     return Response.json(
-      { ok: true, reasoning: fallback },
+      { ok: true, reasoning: fallback, runtimeMode },
       { headers: { "Cache-Control": "no-store" } }
     );
   }
@@ -143,12 +151,19 @@ export async function POST(request: Request) {
       {
         ok: true,
         reasoning: normalizeDecisionExplanation(candidate, fallback, model),
+        runtimeMode,
       },
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch {
+    if (runtimeMode === "live") {
+      return Response.json(
+        { ok: false, error: "LIVE_QWEN_UNAVAILABLE", runtimeMode },
+        { status: 502, headers: { "Cache-Control": "no-store" } }
+      );
+    }
     return Response.json(
-      { ok: true, reasoning: fallback },
+      { ok: true, reasoning: fallback, runtimeMode },
       { headers: { "Cache-Control": "no-store" } }
     );
   } finally {

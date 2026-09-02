@@ -6,6 +6,7 @@ import {
   type ParsedTravelBrief,
 } from "@/lib/intent-parser";
 import { redactSensitiveTravelText } from "@/lib/privacy-redaction";
+import { runtimeModeFromRequest } from "@/lib/runtime-mode";
 
 interface ParseBody {
   brief?: unknown;
@@ -85,6 +86,7 @@ async function parseWithQwen(brief: string): Promise<ParsedTravelBrief | null> {
 }
 
 export async function POST(request: Request) {
+  const runtimeMode = runtimeModeFromRequest(request);
   let body: ParseBody;
   try {
     body = (await request.json()) as ParseBody;
@@ -101,13 +103,29 @@ export async function POST(request: Request) {
   // any traveler-authored text leaves the application. The local parser still
   // receives the original brief so deterministic fallback keeps full fidelity.
   const redaction = redactSensitiveTravelText(brief);
-  const parsed =
-    (await parseWithQwen(redaction.text)) ?? parseTravelBriefLocally(brief);
+  const qwenParsed = await parseWithQwen(redaction.text);
+
+  if (runtimeMode === "live" && !process.env.DASHSCOPE_API_KEY) {
+    return Response.json(
+      { ok: false, error: "LIVE_QWEN_NOT_CONFIGURED", runtimeMode },
+      { status: 503 }
+    );
+  }
+
+  if (runtimeMode === "live" && !qwenParsed) {
+    return Response.json(
+      { ok: false, error: "LIVE_QWEN_UNAVAILABLE", runtimeMode },
+      { status: 502 }
+    );
+  }
+
+  const parsed = qwenParsed ?? parseTravelBriefLocally(brief);
 
   return Response.json(
     {
       ok: true,
       ...parsed,
+      runtimeMode,
       privacy: {
         hostedModelInputRedacted: redaction.redacted,
         redactedKinds: redaction.kinds,

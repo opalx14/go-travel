@@ -33,8 +33,13 @@ import type {
   DeviceJourneyResponse,
   DeviceJourneySnapshot,
 } from "./device-state";
-import { remoteAtlas } from "./atlas/remote-provider";
+import { createRemoteAtlasProvider } from "./atlas/remote-provider";
 import { buildDeterministicDecisionExplanation } from "./decision-explainer";
+import {
+  DEFAULT_RUNTIME_MODE,
+  runtimeModeHeaders,
+  type RuntimeMode,
+} from "./runtime-mode";
 import {
   approveRecovery as executeApproval,
   declineRecovery as executeDecline,
@@ -73,10 +78,12 @@ interface IntentParseResponse extends ParsedTravelBrief {
 interface DecisionExplanationResponse {
   ok: boolean;
   reasoning?: DecisionExplanation;
+  error?: string;
 }
 
 async function resolveDecisionExplanation(
-  outcome: RecoveryOutcome
+  outcome: RecoveryOutcome,
+  runtimeMode: RuntimeMode
 ): Promise<DecisionExplanation> {
   const fallback = buildDeterministicDecisionExplanation(outcome);
   const controller = new AbortController();
@@ -84,7 +91,10 @@ async function resolveDecisionExplanation(
   try {
     const response = await fetch("/api/agent/explain", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...runtimeModeHeaders(runtimeMode),
+      },
       body: JSON.stringify({ outcome }),
       signal: controller.signal,
     });
@@ -100,14 +110,18 @@ async function resolveDecisionExplanation(
 
 async function resolveTravelBrief(
   brief: string,
-  fallbackIntent: TravelIntent
+  fallbackIntent: TravelIntent,
+  runtimeMode: RuntimeMode
 ): Promise<ParsedTravelBrief> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 10_000);
   try {
     const response = await fetch("/api/intent/parse", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...runtimeModeHeaders(runtimeMode),
+      },
       body: JSON.stringify({ brief }),
       signal: controller.signal,
     });
@@ -117,7 +131,8 @@ async function resolveTravelBrief(
       throw new Error("Intent parser returned invalid data");
     }
     return payload;
-  } catch {
+  } catch (error) {
+    if (runtimeMode === "live") throw error;
     return parseTravelBriefLocally(brief, fallbackIntent);
   } finally {
     clearTimeout(timer);
@@ -144,8 +159,11 @@ interface DemoStore {
   intentMatchedFields: IntentField[];
   intentSource: IntentExtractionSource | null;
   persistenceStatus: PersistenceStatus;
+  runtimeMode: RuntimeMode;
+  runtimeError: string | null;
   evidenceView: EvidenceView;
   setEvidenceView: (view: EvidenceView) => void;
+  changeRuntimeMode: (mode: RuntimeMode) => void;
   setAutopilot: (enabled: boolean) => void;
   setMaxExtraSpend: (usd: number) => void;
   protectTrip: (brief: string) => Promise<void>;
@@ -187,7 +205,14 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     needsApproval: 0,
   });
   const [persistenceStatus, setPersistenceStatus] = useState<PersistenceStatus>("saved");
+  const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>(DEFAULT_RUNTIME_MODE);
+  const [runtimeError, setRuntimeError] = useState<string | null>(null);
   const [evidenceView, setEvidenceView] = useState<EvidenceView>("issue");
+
+  const atlasProvider = useMemo(
+    () => createRemoteAtlasProvider(runtimeMode),
+    [runtimeMode]
+  );
 
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -311,8 +336,15 @@ export function DemoProvider({ children }: { children: ReactNode }) {
 
   const protectTrip = useCallback(async (brief: string) => {
     clearTimers();
+    setRuntimeError(null);
     const generation = ++runIdRef.current;
-    const parsed = await resolveTravelBrief(brief, intent);
+    let parsed: ParsedTravelBrief;
+    try {
+      parsed = await resolveTravelBrief(brief, intent, runtimeMode);
+    } catch (error) {
+      if (generation === runIdRef.current) setRuntimeError(failureMessage(error));
+      return;
+    }
     if (generation !== runIdRef.current) return;
 
     setIntent(parsed.intent);
@@ -335,7 +367,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         setPhase("disrupted");
       }, 5600)
     );
-  }, [clearTimers, intent]);
+  }, [clearTimers, intent, runtimeMode]);
 
   /**
    * Record the (simulated) schedule change and hold at the disrupted phase.
@@ -394,8 +426,15 @@ export function DemoProvider({ children }: { children: ReactNode }) {
    */
   const runJudgeScenario = useCallback(async (brief: string) => {
     clearTimers();
+    setRuntimeError(null);
     const generation = ++runIdRef.current;
-    const parsed = await resolveTravelBrief(brief, intent);
+    let parsed: ParsedTravelBrief;
+    try {
+      parsed = await resolveTravelBrief(brief, intent, runtimeMode);
+    } catch (error) {
+      if (generation === runIdRef.current) setRuntimeError(failureMessage(error));
+      return;
+    }
     if (generation !== runIdRef.current) return;
 
     setIntent(parsed.intent);
@@ -417,7 +456,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
 
           let result: RecoveryOutcome;
           try {
-            result = await runRecovery(ORIGINAL_FLIGHT, parsed.intent, remoteAtlas);
+            result = await runRecovery(ORIGINAL_FLIGHT, parsed.intent, atlasProvider);
           } catch (error) {
             result = {
               status: "FAILED",
@@ -438,27 +477,28 @@ export function DemoProvider({ children }: { children: ReactNode }) {
 
           result = {
             ...result,
-            reasoning: await resolveDecisionExplanation(result),
+            reasoning: await resolveDecisionExplanation(result, runtimeMode),
           };
           if (generation !== runIdRef.current) return;
           startReplay(result);
         })();
       }, 1100)
     );
-  }, [clearTimers, intent, startReplay]);
+  }, [atlasProvider, clearTimers, intent, runtimeMode, startReplay]);
 
   /** Run the recovery engine against the live (remote) Atlas provider. */
   const findRecovery = useCallback(async () => {
     if (phase !== "disrupted") return;
     const runId = ++runIdRef.current;
     setPhase("running");
+    setRuntimeError(null);
     setPlayedSteps([]);
     setActiveRun(null);
     setOutcome(null);
 
     let result: RecoveryOutcome;
     try {
-      result = await runRecovery(ORIGINAL_FLIGHT, intent, remoteAtlas);
+      result = await runRecovery(ORIGINAL_FLIGHT, intent, atlasProvider);
     } catch (error) {
       // Search fetch failure/timeout: surface a settled FAILED outcome
       // instead of leaving the UI spinning forever.
@@ -483,14 +523,14 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     // deterministic selection, policy gate, price, or approval state.
     result = {
       ...result,
-      reasoning: await resolveDecisionExplanation(result),
+      reasoning: await resolveDecisionExplanation(result, runtimeMode),
     };
 
     // A newer generation (Reset) superseded this run — do not resurrect it.
     if (runId !== runIdRef.current) return;
 
     startReplay(result);
-  }, [phase, intent, startReplay]);
+  }, [atlasProvider, phase, intent, runtimeMode, startReplay]);
 
   const resetDemo = useCallback(() => {
     // Invalidate any in-flight run so its post-await continuation bails.
@@ -507,8 +547,18 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     setExceptions([]);
     setIsProtected(false);
     setStats({ exceptions: 0, autoResolved: 0, needsApproval: 0 });
+    setRuntimeError(null);
     setEvidenceView("issue");
   }, [clearTimers]);
+
+  const changeRuntimeMode = useCallback(
+    (mode: RuntimeMode) => {
+      if (mode === runtimeMode) return;
+      resetDemo();
+      setRuntimeMode(mode);
+    },
+    [resetDemo, runtimeMode]
+  );
 
   /** Replay only the steps appended by an approval/decline decision. */
   const replayAppendedSteps = useCallback(
@@ -545,7 +595,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     setPhase("running");
     let next: RecoveryOutcome;
     try {
-      next = await executeApproval(ORIGINAL_FLIGHT, outcome, remoteAtlas);
+      next = await executeApproval(ORIGINAL_FLIGHT, outcome, atlasProvider);
     } catch (error) {
       next = {
         ...outcome,
@@ -563,11 +613,11 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     }
     next = {
       ...next,
-      reasoning: await resolveDecisionExplanation(next),
+      reasoning: await resolveDecisionExplanation(next, runtimeMode),
     };
     if (runId !== runIdRef.current) return;
     replayAppendedSteps(outcome, next);
-  }, [outcome, phase, replayAppendedSteps]);
+  }, [atlasProvider, outcome, phase, replayAppendedSteps, runtimeMode]);
 
   const declineRecovery = useCallback(() => {
     if (phase !== "complete") return;
@@ -602,8 +652,11 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       intentMatchedFields,
       intentSource,
       persistenceStatus,
+      runtimeMode,
+      runtimeError,
       evidenceView,
       setEvidenceView,
+      changeRuntimeMode,
       setAutopilot,
       setMaxExtraSpend,
       protectTrip,
@@ -627,8 +680,11 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       intentMatchedFields,
       intentSource,
       persistenceStatus,
+      runtimeMode,
+      runtimeError,
       evidenceView,
       setEvidenceView,
+      changeRuntimeMode,
       setAutopilot,
       setMaxExtraSpend,
       protectTrip,

@@ -1,5 +1,6 @@
 import { atlasFlightTool } from "@/lib/atlas/adapter";
 import { ALTERNATIVES, ATLAS_SEARCH } from "@/lib/scenario";
+import { runtimeModeFromRequest } from "@/lib/runtime-mode";
 
 /**
  * POST /api/atlas/search
@@ -26,7 +27,9 @@ function resolveDepartDate(): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-export async function POST() {
+export async function POST(request: Request) {
+  const runtimeMode = runtimeModeFromRequest(request);
+
   try {
     const result = await atlasFlightTool.searchFlights({
       origin: ATLAS_SEARCH.origin,
@@ -36,6 +39,18 @@ export async function POST() {
     });
 
     if (result.candidates.length === 0) {
+      if (runtimeMode === "live") {
+        return Response.json({
+          ok: true,
+          candidates: [],
+          searchId: result.searchId,
+          offerCount: result.offerCount,
+          returnedCount: result.returnedCount,
+          fallback: false,
+          runtimeMode,
+        });
+      }
+
       return Response.json({
         ok: true,
         candidates: ALTERNATIVES,
@@ -44,6 +59,7 @@ export async function POST() {
         returnedCount: result.returnedCount,
         fallback: true,
         fallbackReason: "ATLAS_NO_INVENTORY",
+        runtimeMode,
       });
     }
 
@@ -54,14 +70,29 @@ export async function POST() {
       offerCount: result.offerCount,
       returnedCount: result.returnedCount,
       fallback: false,
+      runtimeMode,
     });
   } catch {
     // Internal classification happens inside the adapter (typed codes);
     // nothing raw — no message, no stderr — ever reaches the client.
+    if (runtimeMode === "live") {
+      return Response.json(
+        {
+          ok: false,
+          fallback: false,
+          candidates: [],
+          error: "ATLAS_LIVE_UNAVAILABLE",
+          runtimeMode,
+        },
+        { status: 502 }
+      );
+    }
+
     return Response.json({
       ok: true,
       fallback: true,
       candidates: ALTERNATIVES,
+      runtimeMode,
     });
   }
 }

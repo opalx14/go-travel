@@ -72,6 +72,15 @@ The agent never spends blindly:
 
 The traveler demo includes both an autonomous `$50` authority scenario and a `$10` approval-gate scenario. The desktop **Judge Fast Path** can launch either scenario in one click while still running the same Qwen intent parser, simulated disruption event, Atlas search/verification, deterministic policy gate, and read-only Qwen explanation.
 
+### Runtime Modes: Demo by Default, Live on Demand
+
+TripIntent exposes two runtime modes from the header while keeping one shared UI and recovery engine:
+
+- **Demo (default)** — judge-safe mode. Qwen and Atlas are used when available, but unavailable providers or zero Atlas inventory may fall back to clearly-labelled deterministic/local evidence so the three-minute demo remains reproducible.
+- **Live** — connected verification mode. Qwen intent extraction and Atlas search must succeed; simulated provider fallback is disabled. A missing or unavailable connected provider is surfaced as an error rather than silently replaced with demo data.
+
+Both modes still use the same deterministic policy engine and human approval gates. The schedule-change trigger itself remains **SIMULATED in both modes** because the current Atlas Flight Booking integration does not expose airline disruption monitoring. Live mode therefore means live/connected Qwen + Atlas search/verification, not a claim of a production airline event feed.
+
 ### 4. Privacy Boundary Before Hosted Models
 Traveler-authored text is sanitized before it can be sent to DashScope. The redaction layer removes labeled PNR/booking references, passport and ID numbers, payment-card numbers, email addresses, phone numbers, and explicitly labeled passenger names. Deterministic local parsing remains available when hosted inference is unavailable.
 
@@ -114,7 +123,7 @@ Navigate to `/operations` in the app to inspect:
 - **Persistence**: device-scoped SQLite database
 - **P&L Model**: 12% demo service-margin assumption (minimum $6); AP/AR modeled transparently
 
-*Note: This is a hackathon demonstration project operating against the Atlas Sandbox environment. Live order placement, payment, ticket issuance, and settlement remain modeled.*
+*Note: This is a hackathon demonstration project. Demo mode is the default. Live mode removes Qwen/Atlas fallback for connected verification, but live order placement, payment, ticket issuance, settlement, and airline disruption ingestion remain outside this prototype.*
 
 ---
 

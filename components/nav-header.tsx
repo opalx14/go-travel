@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, CircleAlert, Target, UserRound } from "lucide-react";
+import {
+  BarChart3,
+  CircleAlert,
+  FlaskConical,
+  RadioTower,
+  Target,
+  UserRound,
+} from "lucide-react";
 import { useDemo } from "@/lib/demo-store";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +25,14 @@ function RouteMark() {
 }
 
 export function NavHeader() {
-  const { isProtected, evidenceView, setEvidenceView } = useDemo();
+  const {
+    isProtected,
+    evidenceView,
+    setEvidenceView,
+    runtimeMode,
+    runtimeError,
+    changeRuntimeMode,
+  } = useDemo();
   const pathname = usePathname();
   const isAdmin = pathname.startsWith("/admin") || pathname.startsWith("/operations");
 
@@ -94,13 +108,72 @@ export function NavHeader() {
             </Link>
           </div>
 
-          <div className="ti-status-success flex items-center gap-2 rounded-full border px-2.5 py-1 sm:px-3">
-            <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="hidden font-mono text-[11px] font-medium text-emerald-300 sm:inline">
-              Atlas Sandbox Live
-            </span>
-            <span className="font-mono text-[10px] font-medium text-emerald-300 sm:hidden">
+          <div className="ti-control flex items-center gap-1 rounded-full p-1" aria-label="Runtime mode">
+            <button
+              type="button"
+              onClick={() => changeRuntimeMode("demo")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[10px] font-semibold transition",
+                runtimeMode === "demo"
+                  ? "bg-sky-400 text-slate-950"
+                  : "text-slate-500 hover:text-slate-200"
+              )}
+              title="Demo mode: real providers when available, clearly-labelled deterministic fallback allowed"
+            >
+              <FlaskConical className="size-3.5" />
+              Demo
+            </button>
+            <button
+              type="button"
+              onClick={() => changeRuntimeMode("live")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[10px] font-semibold transition",
+                runtimeMode === "live"
+                  ? "bg-emerald-400 text-slate-950"
+                  : "text-slate-500 hover:text-slate-200"
+              )}
+              title="Live mode: Qwen and Atlas connections are required; no simulated provider fallback"
+            >
+              <RadioTower className="size-3.5" />
               Live
+            </button>
+          </div>
+
+          <div
+            className={cn(
+              "hidden items-center gap-2 rounded-full border px-3 py-1 lg:flex",
+              runtimeError
+                ? "border-rose-400/20 bg-rose-400/5"
+                : runtimeMode === "live"
+                  ? "border-emerald-400/20 bg-emerald-400/5"
+                  : "border-sky-400/20 bg-sky-400/5"
+            )}
+          >
+            <span
+              className={cn(
+                "size-1.5 rounded-full",
+                runtimeError
+                  ? "bg-rose-400"
+                  : runtimeMode === "live"
+                    ? "bg-emerald-400 animate-pulse"
+                    : "bg-sky-400"
+              )}
+            />
+            <span
+              className={cn(
+                "font-mono text-[10px] font-medium",
+                runtimeError
+                  ? "text-rose-300"
+                  : runtimeMode === "live"
+                    ? "text-emerald-300"
+                    : "text-sky-300"
+              )}
+            >
+              {runtimeError
+                ? "Connected service unavailable"
+                : runtimeMode === "live"
+                  ? "Connected · no fallback"
+                  : "Default · fallback-safe"}
             </span>
           </div>
         </div>

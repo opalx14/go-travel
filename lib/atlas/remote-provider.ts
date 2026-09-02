@@ -16,6 +16,11 @@ import type {
   TripDataProvider,
 } from "../types";
 import { SCHEDULE_CHANGE_EVENT, TRIP_ID } from "../scenario";
+import {
+  DEFAULT_RUNTIME_MODE,
+  runtimeModeHeaders,
+  type RuntimeMode,
+} from "../runtime-mode";
 
 const SEARCH_TIMEOUT_MS = 45_000;
 const VERIFY_TIMEOUT_MS = 25_000;
@@ -39,14 +44,18 @@ function isFlightOptionArray(value: unknown): value is FlightOption[] {
 async function fetchJson<T>(
   url: string,
   body: unknown,
-  timeoutMs: number
+  timeoutMs: number,
+  runtimeMode: RuntimeMode
 ): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...runtimeModeHeaders(runtimeMode),
+      },
       body: JSON.stringify(body),
       signal: controller.signal,
     });
@@ -60,6 +69,8 @@ async function fetchJson<T>(
 }
 
 export class RemoteAtlasProvider implements TripDataProvider {
+  constructor(private readonly runtimeMode: RuntimeMode = DEFAULT_RUNTIME_MODE) {}
+
   async getDisruption(tripId: string): Promise<DisruptionEvent> {
     if (tripId !== TRIP_ID) {
       throw new Error(`RemoteAtlasProvider: unknown trip "${tripId}"`);
@@ -75,7 +86,8 @@ export class RemoteAtlasProvider implements TripDataProvider {
     const result = await fetchJson<SearchResponse>(
       "/api/atlas/search",
       {},
-      SEARCH_TIMEOUT_MS
+      SEARCH_TIMEOUT_MS,
+      this.runtimeMode
     );
     if (!result.ok || !isFlightOptionArray(result.candidates)) {
       throw new Error("Atlas search route returned no usable candidates");
@@ -90,6 +102,9 @@ export class RemoteAtlasProvider implements TripDataProvider {
    */
   async verifyOffer(option: FlightOption): Promise<OfferVerification> {
     if (!option.atlasOfferId) {
+      if (this.runtimeMode === "live") {
+        throw new Error("Live mode requires an Atlas-backed offer");
+      }
       return {
         priceChange: "unchanged",
         source: "SIMULATED_FALLBACK",
@@ -100,7 +115,8 @@ export class RemoteAtlasProvider implements TripDataProvider {
     const result = await fetchJson<VerifyResponse>(
       "/api/atlas/verify",
       { offerId: option.atlasOfferId },
-      VERIFY_TIMEOUT_MS
+      VERIFY_TIMEOUT_MS,
+      this.runtimeMode
     );
 
     if (result.ok && result.verification) {
@@ -134,7 +150,8 @@ export class RemoteAtlasProvider implements TripDataProvider {
         bookingId: verification.bookingId,
         baggageSupported: verification.baggageSupported === true,
       },
-      VERIFY_TIMEOUT_MS
+      VERIFY_TIMEOUT_MS,
+      this.runtimeMode
     );
 
     if (result.ok && result.verification) {
@@ -157,5 +174,7 @@ export class RemoteAtlasProvider implements TripDataProvider {
   }
 }
 
-/** The active provider for the browser demo. */
-export const remoteAtlas: TripDataProvider = new RemoteAtlasProvider();
+/** Build a provider whose fallback behavior matches the selected runtime mode. */
+export function createRemoteAtlasProvider(mode: RuntimeMode): TripDataProvider {
+  return new RemoteAtlasProvider(mode);
+}
