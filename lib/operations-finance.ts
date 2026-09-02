@@ -9,6 +9,19 @@ import type { DeviceJourneySnapshot } from "./device-state";
 export const DEMO_SERVICE_MARGIN_RATE = 0.12;
 export const DEMO_MIN_SERVICE_FEE_USD = 6;
 
+// qwen3.8-flash International list pricing via DashScope, expressed per 1K tokens.
+const QWEN_INPUT_COST_USD_PER_1K = 0.00015;
+const QWEN_OUTPUT_COST_USD_PER_1K = 0.00047;
+
+function estimateQwenInferenceCost(totalTokens: number): number {
+  const promptTokens = Math.round(totalTokens * 0.67);
+  const completionTokens = Math.max(0, totalTokens - promptTokens);
+  return (
+    (promptTokens / 1000) * QWEN_INPUT_COST_USD_PER_1K +
+    (completionTokens / 1000) * QWEN_OUTPUT_COST_USD_PER_1K
+  );
+}
+
 export type OperationsDataMode = "device-evidence" | "demo-scenario";
 export type BookingHealth =
   | "recovered"
@@ -464,7 +477,7 @@ function fallbackBookings(): ClientBookingReport[] {
       recoveryState: "COMPLETED",
       refundExposureUsd: 0,
       tokensUsed: 480,
-      tokenCostUsd: 0.0032,
+      tokenCostUsd: estimateQwenInferenceCost(480),
       evaluationsCount: 3,
       rejectedDetails: [
         {
@@ -516,7 +529,7 @@ function fallbackBookings(): ClientBookingReport[] {
       recoveryState: "PENDING_APPROVAL",
       refundExposureUsd: 89,
       tokensUsed: 480,
-      tokenCostUsd: 0.0032,
+      tokenCostUsd: estimateQwenInferenceCost(480),
       evaluationsCount: 3,
       rejectedDetails: [
         {
@@ -559,7 +572,7 @@ function fallbackBookings(): ClientBookingReport[] {
       recoveryState: "ACTION_REQUIRED",
       refundExposureUsd: 89,
       tokensUsed: 360,
-      tokenCostUsd: 0.0024,
+      tokenCostUsd: estimateQwenInferenceCost(360),
       evaluationsCount: 0,
       rejectedDetails: [],
     },
@@ -592,7 +605,7 @@ function fallbackBookings(): ClientBookingReport[] {
       recoveryState: "MONITORING",
       refundExposureUsd: 0,
       tokensUsed: 320,
-      tokenCostUsd: 0.0021,
+      tokenCostUsd: estimateQwenInferenceCost(320),
       evaluationsCount: 0,
       rejectedDetails: [],
     },
@@ -696,7 +709,7 @@ function buildRubricScorecard(): RubricScorecard {
       weightMax: 4,
       score: 4,
       description: "Leverages Qwen via DashScope with optimized prompt templates and strict token budgets (< 0.05% of travel gross margin).",
-      evidence: "Telemetry tracking: ~480 tokens/case ($0.0032 compute cost vs $99.68 protected).",
+      evidence: "Modeled telemetry: ~480 tokens/case (~$0.00012 qwen3.8-flash inference at International list pricing).",
       status: "verified",
     },
     {
@@ -831,8 +844,8 @@ function summarize(bookings: ClientBookingReport[]): OperationsSummary {
   const totalTokens = bookings.reduce((tot, b) => tot + (b.tokensUsed || 480), 0);
   const promptTokens = Math.round(totalTokens * 0.67);
   const completionTokens = totalTokens - promptTokens;
-  const rawComputeCost = (promptTokens / 1000) * 0.00008 + (completionTokens / 1000) * 0.0002;
-  const totalAiComputeCostUsd = Math.round((rawComputeCost + ROUNDING_EPSILON) * 10000) / 10000 || 0.0084;
+  const rawComputeCost = estimateQwenInferenceCost(totalTokens);
+  const totalAiComputeCostUsd = Math.round((rawComputeCost + ROUNDING_EPSILON) * 1000000) / 1000000;
 
   const netOperatingProfitUsd = money(grossProfitUsd - totalAiComputeCostUsd);
   const netOperatingMarginPct =
@@ -846,17 +859,17 @@ function summarize(bookings: ClientBookingReport[]): OperationsSummary {
       : 37861;
 
   const aiTokenEconomics: AITokenEconomics = {
-    model: "qwen-flash (Alibaba Cloud DashScope)",
+    model: "qwen3.8-flash (Alibaba Cloud DashScope)",
     totalTokens,
     promptTokens,
     completionTokens,
     totalInferenceCostUsd: totalAiComputeCostUsd,
     avgTokensPerCase: Math.round(totalTokens / Math.max(1, bookings.length)),
-    avgInferenceCostPerCaseUsd: Math.round(((totalAiComputeCostUsd / Math.max(1, bookings.length)) + ROUNDING_EPSILON) * 10000) / 10000 || 0.0021,
+    avgInferenceCostPerCaseUsd: Math.round(((totalAiComputeCostUsd / Math.max(1, bookings.length)) + ROUNDING_EPSILON) * 1000000) / 1000000,
     aiEfficiencyMultiplier,
     deterministicOffloadPct: 78.4,
-    costPer1kPromptUsd: 0.00008,
-    costPer1kCompletionUsd: 0.0002,
+    costPer1kPromptUsd: QWEN_INPUT_COST_USD_PER_1K,
+    costPer1kCompletionUsd: QWEN_OUTPUT_COST_USD_PER_1K,
   };
 
   const servicingComparison: ServicingComparison = {

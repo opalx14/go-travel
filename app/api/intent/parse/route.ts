@@ -42,7 +42,7 @@ async function parseWithQwen(brief: string): Promise<ParsedTravelBrief | null> {
   if (!apiKey) return null;
 
   const endpoint = process.env.QWEN_CHAT_COMPLETIONS_URL ?? DEFAULT_QWEN_ENDPOINT;
-  const model = process.env.QWEN_MODEL ?? "qwen-flash";
+  const model = process.env.QWEN_MODEL ?? "qwen3.8-flash";
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8_000);
 

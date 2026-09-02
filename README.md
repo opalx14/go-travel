@@ -113,7 +113,7 @@ Navigate to `/operations` in the app to inspect:
 ## Provenance & Attribution
 
 - **Development Tooling**: Qoder IDE
-- **LLM Intent Parser**: Qwen via Alibaba Cloud DashScope (`QWEN_MODEL`, default `qwen-flash`) with deterministic fallback
+- **LLM Intent Parser**: Qwen via Alibaba Cloud DashScope (`QWEN_MODEL`, default `qwen3.8-flash`) with deterministic fallback
 - **LLM Decision Explanation**: the same configured Qwen model explains an already-computed deterministic decision; it cannot change selection, policy, price, or approval state
 - **Disruption Signal**: simulated schedule-change event for the hackathon scenario; never presented as Atlas monitoring data
 - **Flight & Retailing Infrastructure**: Atlas Flight Booking Skill & Sandbox for search, offer verification, baggage lookup, and price re-check

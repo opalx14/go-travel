@@ -113,7 +113,7 @@ export async function POST(request: Request) {
   }
 
   const endpoint = process.env.QWEN_CHAT_COMPLETIONS_URL ?? DEFAULT_QWEN_ENDPOINT;
-  const model = process.env.QWEN_MODEL ?? "qwen-flash";
+  const model = process.env.QWEN_MODEL ?? "qwen3.8-flash";
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 4_000);
 
