@@ -9,17 +9,15 @@ import type { DeviceJourneySnapshot } from "./device-state";
 export const DEMO_SERVICE_MARGIN_RATE = 0.12;
 export const DEMO_MIN_SERVICE_FEE_USD = 6;
 
-// qwen3.8-flash International list pricing via DashScope, expressed per 1K tokens.
-const QWEN_INPUT_COST_USD_PER_1K = 0.00015;
-const QWEN_OUTPUT_COST_USD_PER_1K = 0.00047;
+// Qwen is self-hosted for this prototype, so there is no external model API fee.
+// Hardware/electricity cost is deployment-dependent and intentionally not invented
+// in this modeled P&L. Token counts remain useful as an inference-budget guardrail.
+const QWEN_INPUT_COST_USD_PER_1K = 0;
+const QWEN_OUTPUT_COST_USD_PER_1K = 0;
 
 function estimateQwenInferenceCost(totalTokens: number): number {
-  const promptTokens = Math.round(totalTokens * 0.67);
-  const completionTokens = Math.max(0, totalTokens - promptTokens);
-  return (
-    (promptTokens / 1000) * QWEN_INPUT_COST_USD_PER_1K +
-    (completionTokens / 1000) * QWEN_OUTPUT_COST_USD_PER_1K
-  );
+  void totalTokens;
+  return 0;
 }
 
 export type OperationsDataMode = "device-evidence" | "demo-scenario";
@@ -660,8 +658,8 @@ function buildRubricScorecard(): RubricScorecard {
       title: "Multilingual Natural Language Extraction",
       weightMax: 4,
       score: 4,
-      description: "Extracts structured contract parameters from unstructured traveler text across English and Vietnamese via Alibaba Cloud Qwen.",
-      evidence: "Dual parser with a configured Qwen model on DashScope + deterministic regex fallback.",
+      description: "Extracts structured contract parameters from unstructured traveler text across English and Vietnamese via self-hosted Qwen.",
+      evidence: "Dual parser with Qwen3.5-27B 4-bit through a local OpenAI-compatible endpoint + deterministic regex fallback.",
       status: "verified",
     },
     {
@@ -705,11 +703,11 @@ function buildRubricScorecard(): RubricScorecard {
       dimensionNumber: 7,
       category: "Use of Qoder",
       categoryWeight: "20%",
-      title: "Alibaba Cloud DashScope & Token Efficiency",
+      title: "Self-hosted Qwen & Token Efficiency",
       weightMax: 4,
       score: 4,
-      description: "Leverages Qwen via DashScope with optimized prompt templates and strict token budgets (< 0.05% of travel gross margin).",
-      evidence: "Modeled telemetry: ~480 tokens/case (~$0.00012 qwen3.8-flash inference at International list pricing).",
+      description: "Uses open-weight Qwen3.5-27B 4-bit with strict output caps while deterministic policy code offloads constraint math from the model.",
+      evidence: "Modeled telemetry tracks ~480 tokens/case; external model API fee is $0 and infrastructure compute is deployment-dependent.",
       status: "verified",
     },
     {
@@ -856,10 +854,10 @@ function summarize(bookings: ClientBookingReport[]): OperationsSummary {
   const aiEfficiencyMultiplier =
     totalAiComputeCostUsd > 0
       ? Math.round(revenueProtectedUsd / totalAiComputeCostUsd)
-      : 37861;
+      : 0;
 
   const aiTokenEconomics: AITokenEconomics = {
-    model: "qwen3.8-flash (Alibaba Cloud DashScope)",
+    model: "Qwen3.5-27B 4-bit (self-hosted MLX)",
     totalTokens,
     promptTokens,
     completionTokens,

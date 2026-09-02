@@ -5,9 +5,7 @@ import {
 } from "@/lib/decision-explainer";
 import type { RecoveryOutcome } from "@/lib/types";
 import { runtimeModeFromRequest } from "@/lib/runtime-mode";
-
-const DEFAULT_QWEN_ENDPOINT =
-  "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions";
+import { localQwenConfig } from "@/lib/qwen-runtime";
 
 const SYSTEM_PROMPT = `You are TripIntent's explanation layer.
 The recovery decision has ALREADY been made by deterministic policy code.
@@ -98,8 +96,8 @@ export async function POST(request: Request) {
   }
 
   const fallback = buildDeterministicDecisionExplanation(body.outcome);
-  const apiKey = process.env.DASHSCOPE_API_KEY;
-  if (!apiKey) {
+  const config = localQwenConfig();
+  if (!config) {
     if (runtimeMode === "live") {
       return Response.json(
         { ok: false, error: "LIVE_QWEN_NOT_CONFIGURED", runtimeMode },
@@ -112,17 +110,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const endpoint = process.env.QWEN_CHAT_COMPLETIONS_URL ?? DEFAULT_QWEN_ENDPOINT;
-  const model = process.env.QWEN_MODEL ?? "qwen3.8-flash";
+  const { endpoint, model, headers, timeoutMs } = config;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 4_000);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
+        ...headers,
       },
       body: JSON.stringify({
         model,
@@ -133,10 +130,9 @@ export async function POST(request: Request) {
             content: `Explain this already-decided recovery result:\n${JSON.stringify(facts(body.outcome))}`,
           },
         ],
-        response_format: { type: "json_object" },
-        enable_thinking: false,
         temperature: 0,
         max_tokens: 300,
+        chat_template_kwargs: { enable_thinking: false },
       }),
       signal: controller.signal,
     });

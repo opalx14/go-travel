@@ -121,8 +121,8 @@ describe("operations finance report", () => {
     // AI Token Economics assertions
     expect(report.summary.aiTokenEconomics.totalTokens).toBeGreaterThan(0);
     expect(report.summary.aiTokenEconomics.deterministicOffloadPct).toBe(78.4);
-    expect(report.summary.aiTokenEconomics.aiEfficiencyMultiplier).toBeGreaterThan(1000);
-    expect(report.summary.totalAiComputeCostUsd).toBeGreaterThan(0);
+    expect(report.summary.aiTokenEconomics.aiEfficiencyMultiplier).toBe(0);
+    expect(report.summary.totalAiComputeCostUsd).toBe(0);
     expect(report.summary.netOperatingProfitUsd).toBeGreaterThan(0);
 
     // Outcome Proof assertions

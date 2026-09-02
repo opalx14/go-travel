@@ -90,7 +90,7 @@ function ProvenanceRail() {
       label: "Intent",
       value:
         intentSource === "QWEN"
-          ? "Qwen"
+          ? "Qwen Local"
           : intentSource
             ? "Deterministic fallback"
             : "Pending",
@@ -123,7 +123,7 @@ function ProvenanceRail() {
       label: "Explanation",
       value:
         reasoning?.source === "QWEN"
-          ? `Qwen${reasoning.model ? ` · ${reasoning.model}` : ""}`
+          ? `Qwen Local${reasoning.model ? ` · ${reasoning.model}` : ""}`
           : reasoning
             ? "Deterministic fallback"
             : "Pending",

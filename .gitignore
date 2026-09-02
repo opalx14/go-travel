@@ -27,6 +27,11 @@
 .DS_Store
 *.pem
 
+# local AI model artifacts (weights stay outside Git/VPS)
+*.safetensors
+*.gguf
+/.cache/huggingface/
+
 # temporary headless-chrome profile used for screenshot evidence
 /.chrome-cdp/
 

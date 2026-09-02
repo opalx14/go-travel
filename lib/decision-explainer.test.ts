@@ -95,11 +95,11 @@ describe("decision explainer", () => {
         selectedReason: "It arrives before 18:00 and stays inside authority.",
       },
       fallback,
-      "qwen3.8-flash"
+      "mlx-community/Qwen3.5-27B-4bit"
     );
 
     expect(explanation.source).toBe("QWEN");
-    expect(explanation.model).toBe("qwen3.8-flash");
+    expect(explanation.model).toBe("mlx-community/Qwen3.5-27B-4bit");
     expect(explanation.headline).toContain("CA 88");
     expect(explanation.rejectedReason).toBe(fallback.rejectedReason);
   });

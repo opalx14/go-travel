@@ -37,7 +37,7 @@ export default function AdminPage() {
               Travel Operations P&amp;L &amp; AI Unit Economics
             </h1>
             <p className="mt-2 max-w-2xl text-xs sm:text-sm leading-relaxed text-slate-400">
-              Institutional control plane designed for travel CEOs, CTOs &amp; Hackathon Judges — connecting autonomous disruption recovery directly to booking revenue, real-world P&amp;L margins, DashScope Qwen token budgets, and the 40-point rubric.
+              Institutional control plane designed for travel CEOs, CTOs &amp; Hackathon Judges — connecting autonomous disruption recovery directly to booking revenue, real-world P&amp;L margins, self-hosted Qwen token budgets, and the 40-point rubric.
             </p>
           </div>
 

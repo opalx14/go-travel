@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "bun test",
-    "atlas:smoke": "bun scripts/atlas-smoke.ts"
+    "atlas:smoke": "bun scripts/atlas-smoke.ts",
+    "qwen:smoke": "bun scripts/qwen-smoke.ts"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

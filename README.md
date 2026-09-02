@@ -29,8 +29,8 @@ $$\text{Disruption Signal} \longrightarrow \text{Outcome Contract} \longrightarr
 ```text
 Traveler natural-language brief
   ↓
-Qwen intent extraction (Alibaba Cloud DashScope)
-  ↘ deterministic local fallback (zero crash guarantee)
+Qwen3.5-27B 4-bit intent extraction (local/self-hosted OpenAI-compatible endpoint)
+  ↘ deterministic TypeScript fallback (zero crash guarantee)
   ↓
 TravelIntent Contract (Arrival deadline · Baggage allowance · Flexibility · Spend Authority)
   ↓
@@ -81,8 +81,8 @@ TripIntent exposes two runtime modes from the header while keeping one shared UI
 
 Both modes still use the same deterministic policy engine and human approval gates. The schedule-change trigger itself remains **SIMULATED in both modes** because the current Atlas Flight Booking integration does not expose airline disruption monitoring. Live mode therefore means live/connected Qwen + Atlas search/verification, not a claim of a production airline event feed.
 
-### 4. Privacy Boundary Before Hosted Models
-Traveler-authored text is sanitized before it can be sent to DashScope. The redaction layer removes labeled PNR/booking references, passport and ID numbers, payment-card numbers, email addresses, phone numbers, and explicitly labeled passenger names. Deterministic local parsing remains available when hosted inference is unavailable.
+### 4. Privacy Boundary Before Model Inference
+Traveler-authored text is sanitized before it reaches the configured Qwen inference server. The redaction layer removes labeled PNR/booking references, passport and ID numbers, payment-card numbers, email addresses, phone numbers, and explicitly labeled passenger names. Deterministic parsing remains available when the model server is absent or unavailable.
 
 ### 5. Margin & Revenue Protection (Business P&L)
 The `/operations` dashboard elevates **"Revenue Protected by Autonomous Recovery"** as the #1 Hero KPI:
@@ -113,13 +113,14 @@ Navigate to `/operations` in the app to inspect:
 ## Provenance & Attribution
 
 - **Development Tooling**: Qoder IDE
-- **LLM Intent Parser**: Qwen via Alibaba Cloud DashScope (`QWEN_MODEL`, default `qwen3.8-flash`) with deterministic fallback
-- **LLM Decision Explanation**: the same configured Qwen model explains an already-computed deterministic decision; it cannot change selection, policy, price, or approval state
+- **LLM Intent Parser**: open-weight Qwen3.5-27B 4-bit through a local/self-hosted OpenAI-compatible endpoint (`LOCAL_QWEN_CHAT_COMPLETIONS_URL`), with deterministic fallback
+- **LLM Decision Explanation**: the same local/self-hosted Qwen model explains an already-computed deterministic decision; it cannot change selection, policy, price, or approval state
 - **Disruption Signal**: simulated schedule-change event for the hackathon scenario; never presented as Atlas monitoring data
 - **Flight & Retailing Infrastructure**: Atlas Flight Booking Skill & Sandbox for search, offer verification, baggage lookup, and price re-check
 - **Deterministic Safety Layer**: hard travel constraints and delegated spending authority are enforced in TypeScript, not delegated to the LLM
-- **Hosted-model Privacy Boundary**: traveler text is redacted before DashScope receives it; PNR, labeled identity fields, payment-card numbers, email addresses, and phone numbers are not intentionally forwarded
+- **Model Privacy Boundary**: traveler text is redacted before it reaches the configured inference endpoint; PNR, labeled identity fields, payment-card numbers, email addresses, and phone numbers are not intentionally forwarded
 - **Token Control**: intent extraction uses one structured Qwen call with a 180-token output cap; explanation uses one read-only call capped at 300 tokens, with deterministic fallbacks for both paths
+- **Deployment Split**: model weights live only in the local Hugging Face/MLX cache; GitHub and the VPS contain application code only and do not require the 27B model to boot
 - **Persistence**: device-scoped SQLite database
 - **P&L Model**: 12% demo service-margin assumption (minimum $6); AP/AR modeled transparently
 
@@ -132,7 +133,7 @@ Navigate to `/operations` in the app to inspect:
 | Claim | Runtime evidence | Code path | Verification |
 | --- | --- | --- | --- |
 | Natural-language outcome contract | Qwen / deterministic source shown in the UI | `app/api/intent/parse/route.ts`, `lib/intent-parser.ts` | `lib/intent-parser.test.ts` |
-| Hosted-model privacy | Traveler text is redacted before DashScope inference | `lib/privacy-redaction.ts`, `app/api/intent/parse/route.ts` | `lib/privacy-redaction.test.ts` |
+| Model privacy | Traveler text is redacted before Qwen inference | `lib/privacy-redaction.ts`, `app/api/intent/parse/route.ts` | `lib/privacy-redaction.test.ts` |
 | Cheapest can be rejected | Candidate evaluation shows deadline/baggage violations | `lib/policy-engine.ts`, `lib/recovery-engine.ts` | `lib/policy-engine.test.ts`, `lib/recovery-engine.test.ts` |
 | Atlas is used for travel evidence | Search/verification source is labeled per candidate and fare | `app/api/atlas/*`, `lib/atlas/*` | Atlas adapter/parser/client tests + `bun run atlas:smoke` |
 | LLM cannot override safety | Decision is computed before Qwen explanation is requested | `lib/recovery-engine.ts`, `app/api/agent/explain/route.ts` | `lib/decision-explainer.test.ts` |
@@ -150,6 +151,7 @@ bun test             # Unit and integration test suite
 bun run lint         # ESLint check
 bun run build        # Production bundle build
 bun run atlas:smoke  # Read-only Atlas CLI verification test
+bun run qwen:smoke   # OpenAI-compatible local Qwen endpoint verification
 ```
 
 ---
@@ -162,6 +164,27 @@ bun install
 bun run dev
 ```
 
-`DASHSCOPE_API_KEY` is optional for local verification: without it, intent extraction and decision explanation fall back to deterministic code. This keeps the core recovery flow testable even when hosted-model credentials or network access are unavailable.
+### Local Qwen on Apple Silicon
+
+The repository does **not** contain model weights. On the development Mac, install MLX-LM and run the quantized 27B model as a local OpenAI-compatible server:
+
+```bash
+uv tool install mlx-lm
+mlx_lm.server \
+  --model mlx-community/Qwen3.5-27B-4bit \
+  --host 127.0.0.1 \
+  --port 8080 \
+  --chat-template-args '{"enable_thinking":false}'
+```
+
+With the `.env.example` values copied into `.env.local`, verify the direct model endpoint with:
+
+```bash
+bun run qwen:smoke
+```
+
+Then run TripIntent normally with `bun run dev`. Demo mode uses Qwen when the local endpoint is configured and healthy, but falls back deterministically if it is absent. Live mode requires the configured Qwen endpoint plus Atlas and surfaces provider failures instead of silently substituting demo evidence.
+
+On the VPS, leave `LOCAL_QWEN_CHAT_COMPLETIONS_URL` unset unless a reachable self-hosted inference server exists. The core recovery flow will still boot and run in Demo mode without Qwen weights or any hosted-model API key.
 
 Open [http://localhost:3020](http://localhost:3020) to view the TripIntent passenger experience, [http://localhost:3020/admin](http://localhost:3020/admin) for the live operator view, or [http://localhost:3020/operations](http://localhost:3020/operations) for the Business Operations Control Center.

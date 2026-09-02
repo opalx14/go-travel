@@ -59,7 +59,7 @@ export function TravelBrief() {
             Intent compiled: arrive by {intent.latestArrival}, at least {intent.minBaggageKg}kg baggage, departure flexibility +{intent.departureFlexibilityHours}h, and up to ${intent.maxExtraSpendUsd} delegated spend.
           </p>
           <p className="mt-2 hidden text-xs text-muted-foreground/80 sm:block">
-            {intentMatchedFields.length} constraint{intentMatchedFields.length === 1 ? "" : "s"} read directly from your brief · {intentSource === "QWEN" ? "Qwen extraction" : "Deterministic fallback"} · Autopilot {intent.autopilot ? "on" : "off"}
+            {intentMatchedFields.length} constraint{intentMatchedFields.length === 1 ? "" : "s"} read directly from your brief · {intentSource === "QWEN" ? "Qwen Local extraction" : "Deterministic fallback"} · Autopilot {intent.autopilot ? "on" : "off"}
           </p>
         </div>
         <div className="choreo-reveal choreo-delay-3 hidden sm:block">

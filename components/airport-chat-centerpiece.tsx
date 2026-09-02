@@ -291,7 +291,7 @@ export function AirportChatCenterpiece({ inline = false }: { inline?: boolean })
                 Judge Fast Path
               </p>
               <p className="mt-0.5 text-[10px] text-slate-500">
-                One click: intent → disruption → Atlas search → policy → Qwen explanation.
+                One click: intent → disruption → Atlas search → policy → Qwen Local explanation.
               </p>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -350,7 +350,7 @@ export function AirportChatCenterpiece({ inline = false }: { inline?: boolean })
           </span>
           <span className="flex items-center gap-1 text-slate-300">
             <Check className="size-3 text-sky-400" />
-            Qwen Intent Natural Parser
+            Qwen Local Intent Parser
           </span>
           <span className="flex items-center gap-1 text-slate-300">
             <Check className="size-3 text-amber-400" />

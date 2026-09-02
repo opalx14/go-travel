@@ -132,7 +132,7 @@ export function NavHeader() {
                   ? "bg-emerald-400 text-slate-950"
                   : "text-slate-500 hover:text-slate-200"
               )}
-              title="Live mode: Qwen and Atlas connections are required; no simulated provider fallback"
+              title="Live mode: self-hosted Qwen and Atlas connections are required; no simulated provider fallback"
             >
               <RadioTower className="size-3.5" />
               Live

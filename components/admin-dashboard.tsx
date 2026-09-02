@@ -339,7 +339,7 @@ function LiveMonitorView({
                       <BrainCircuit className="size-3.5 text-sky-400" /> Agent explanation
                     </p>
                     <span className="font-mono text-[9px] text-sky-300">
-                      {selected.reasoning.source === "QWEN" ? `Qwen${selected.reasoning.model ? ` · ${selected.reasoning.model}` : ""}` : "Rules fallback"}
+                      {selected.reasoning.source === "QWEN" ? `Qwen Local${selected.reasoning.model ? ` · ${selected.reasoning.model}` : ""}` : "Rules fallback"}
                     </span>
                   </div>
                   <p className="mt-2 text-xs font-semibold text-slate-200">{selected.reasoning.headline}</p>
@@ -705,11 +705,11 @@ function TravelPnLView({ report }: { report: OperationsReport }) {
               <span className="text-amber-300">-{money(pnl.recoverySpendUsd)}</span>
             </div>
 
-            {/* Step 5: AI Token Compute Cost */}
+            {/* Step 5: External model API fee */}
             <div className="flex items-center justify-between rounded-xl border border-slate-800/80 bg-slate-950/30 px-4 py-3 text-xs">
               <div className="flex items-center gap-2 text-slate-400">
                 <span className="flex size-5 items-center justify-center rounded-md bg-violet-400/10 text-[11px] font-bold text-violet-400">-</span>
-                <span>Alibaba Cloud DashScope (Qwen Inference Cost)</span>
+                <span>Qwen External API Fee (Self-hosted)</span>
               </div>
               <span className="text-violet-300">-{money(pnl.totalAiComputeCostUsd)}</span>
             </div>
@@ -729,7 +729,7 @@ function TravelPnLView({ report }: { report: OperationsReport }) {
 
           <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/40 p-3.5 text-[11px] leading-relaxed text-slate-400">
             <span className="font-semibold text-slate-300">💡 Executive Takeaway: </span>
-            Autonomous recovery protected <strong className="text-emerald-300">{money(pnl.revenueProtectedUsd)}</strong> of booking revenue with only <strong className="text-amber-300">{money(pnl.recoverySpendUsd)}</strong> in flight fare deltas and <strong className="text-violet-300">{money(pnl.totalAiComputeCostUsd)}</strong> in LLM compute.
+            Autonomous recovery protected <strong className="text-emerald-300">{money(pnl.revenueProtectedUsd)}</strong> of booking revenue with <strong className="text-amber-300">{money(pnl.recoverySpendUsd)}</strong> in flight fare deltas. Qwen runs self-hosted, so the external model API fee is <strong className="text-violet-300">{money(pnl.totalAiComputeCostUsd)}</strong>; infrastructure compute remains deployment-dependent.
           </div>
         </div>
 
@@ -837,20 +837,20 @@ function AITokenBudgetView({ report }: { report: OperationsReport }) {
           badge="Token Usage"
         />
         <MetricCard
-          label="Total LLM Compute Cost"
+          label="External Model API Fee"
           value={money(ai.totalInferenceCostUsd)}
-          note={`Avg ${money(ai.avgInferenceCostPerCaseUsd)} / passenger journey (${ai.avgTokensPerCase} tokens).`}
+          note={`Self-hosted inference · ${ai.avgTokensPerCase} avg tokens/case · hardware cost is deployment-dependent.`}
           icon={Cpu}
           tone="violet"
-          badge="DashScope"
+          badge="Self-hosted"
         />
         <MetricCard
-          label="AI Efficiency Multiplier"
-          value={`${ai.aiEfficiencyMultiplier.toLocaleString()}×`}
-          note={`Protected ${money(summary.revenueProtectedUsd)} with only ${money(ai.totalInferenceCostUsd)} compute.`}
+          label="Inference Runtime"
+          value="Self-hosted"
+          note={ai.model}
           icon={Flame}
           tone="success"
-          badge="ROI"
+          badge="MLX / OpenAI API"
         />
         <MetricCard
           label="Deterministic Offload"
@@ -878,11 +878,11 @@ function AITokenBudgetView({ report }: { report: OperationsReport }) {
             <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-400">Budget Cap per Recovery Case</span>
-                <span className="font-mono font-semibold text-slate-200">2,000 Tokens ($0.0150 Max)</span>
+                <span className="font-mono font-semibold text-slate-200">2,000 Tokens (hard cap)</span>
               </div>
               <div className="mt-3 flex items-center justify-between text-xs">
                 <span className="text-slate-400">Actual Average Consumption</span>
-                <span className="font-mono font-semibold text-emerald-300">{ai.avgTokensPerCase} Tokens ({money(ai.avgInferenceCostPerCaseUsd)})</span>
+                <span className="font-mono font-semibold text-emerald-300">{ai.avgTokensPerCase} Tokens · external API fee {money(ai.avgInferenceCostPerCaseUsd)}</span>
               </div>
               {/* Progress bar */}
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-800">
@@ -923,17 +923,17 @@ function AITokenBudgetView({ report }: { report: OperationsReport }) {
               <p className="label-caps text-violet-400">Compute Telemetry</p>
               <h2 className="mt-1 text-lg font-semibold text-white">Pipeline Execution Costs</h2>
             </div>
-            <span className="font-mono text-[10px] text-slate-400">MODEL: QWEN-FLASH</span>
+            <span className="font-mono text-[10px] text-slate-400">MODEL: QWEN3.5-27B-4BIT</span>
           </div>
 
           <div className="mt-5 space-y-3">
             {[
               {
                 op: "Traveler Intent Extraction",
-                engine: "Alibaba Cloud Qwen (DashScope)",
+                engine: "Qwen3.5-27B 4-bit (Self-hosted MLX)",
                 tokens: "~320 tokens",
-                cost: "$0.0022",
-                status: "LLM INFERENCE",
+                cost: "API $0",
+                status: "SELF-HOSTED",
                 badgeTone: "text-violet-300 bg-violet-400/10 border-violet-400/20",
               },
               {
@@ -1521,7 +1521,7 @@ export function AdminDashboard({
           </p>
         </div>
         <span className="font-mono text-[10px] text-slate-500">
-          Atlas Sandbox · Qwen · SQLite
+          Atlas Sandbox · Qwen Local · SQLite
         </span>
       </div>
     </div>
