@@ -5,6 +5,7 @@ import {
   type IntentExtractionCandidate,
   type ParsedTravelBrief,
 } from "@/lib/intent-parser";
+import { redactSensitiveTravelText } from "@/lib/privacy-redaction";
 
 interface ParseBody {
   brief?: unknown;
@@ -60,6 +61,7 @@ async function parseWithQwen(brief: string): Promise<ParsedTravelBrief | null> {
         response_format: { type: "json_object" },
         enable_thinking: false,
         temperature: 0,
+        max_tokens: 180,
       }),
       signal: controller.signal,
     });
@@ -95,6 +97,22 @@ export async function POST(request: Request) {
     return Response.json({ ok: false, error: "BAD_REQUEST" }, { status: 400 });
   }
 
-  const parsed = (await parseWithQwen(brief)) ?? parseTravelBriefLocally(brief);
-  return Response.json({ ok: true, ...parsed });
+  // Hosted-model boundary: strip identity, booking and payment data before
+  // any traveler-authored text leaves the application. The local parser still
+  // receives the original brief so deterministic fallback keeps full fidelity.
+  const redaction = redactSensitiveTravelText(brief);
+  const parsed =
+    (await parseWithQwen(redaction.text)) ?? parseTravelBriefLocally(brief);
+
+  return Response.json(
+    {
+      ok: true,
+      ...parsed,
+      privacy: {
+        hostedModelInputRedacted: redaction.redacted,
+        redactedKinds: redaction.kinds,
+      },
+    },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }

@@ -72,7 +72,10 @@ The agent never spends blindly:
 
 The traveler demo includes both an autonomous `$50` authority scenario and a `$10` approval-gate scenario. The desktop **Judge Fast Path** can launch either scenario in one click while still running the same Qwen intent parser, simulated disruption event, Atlas search/verification, deterministic policy gate, and read-only Qwen explanation.
 
-### 4. Margin & Revenue Protection (Business P&L)
+### 4. Privacy Boundary Before Hosted Models
+Traveler-authored text is sanitized before it can be sent to DashScope. The redaction layer removes labeled PNR/booking references, passport and ID numbers, payment-card numbers, email addresses, phone numbers, and explicitly labeled passenger names. Deterministic local parsing remains available when hosted inference is unavailable.
+
+### 5. Margin & Revenue Protection (Business P&L)
 The `/operations` dashboard elevates **"Revenue Protected by Autonomous Recovery"** as the #1 Hero KPI:
 - **Protected Booking Value**: Preserves customer lifetime value and avoids cancellations.
 - **Support Cost Eliminated**: Replaces hours of customer support with a 3-second autonomous resolution.
@@ -106,6 +109,8 @@ Navigate to `/operations` in the app to inspect:
 - **Disruption Signal**: simulated schedule-change event for the hackathon scenario; never presented as Atlas monitoring data
 - **Flight & Retailing Infrastructure**: Atlas Flight Booking Skill & Sandbox for search, offer verification, baggage lookup, and price re-check
 - **Deterministic Safety Layer**: hard travel constraints and delegated spending authority are enforced in TypeScript, not delegated to the LLM
+- **Hosted-model Privacy Boundary**: traveler text is redacted before DashScope receives it; PNR, labeled identity fields, payment-card numbers, email addresses, and phone numbers are not intentionally forwarded
+- **Token Control**: intent extraction uses one structured Qwen call with a 180-token output cap; explanation uses one read-only call capped at 300 tokens, with deterministic fallbacks for both paths
 - **Persistence**: device-scoped SQLite database
 - **P&L Model**: 12% demo service-margin assumption (minimum $6); AP/AR modeled transparently
 
@@ -118,6 +123,7 @@ Navigate to `/operations` in the app to inspect:
 | Claim | Runtime evidence | Code path | Verification |
 | --- | --- | --- | --- |
 | Natural-language outcome contract | Qwen / deterministic source shown in the UI | `app/api/intent/parse/route.ts`, `lib/intent-parser.ts` | `lib/intent-parser.test.ts` |
+| Hosted-model privacy | Traveler text is redacted before DashScope inference | `lib/privacy-redaction.ts`, `app/api/intent/parse/route.ts` | `lib/privacy-redaction.test.ts` |
 | Cheapest can be rejected | Candidate evaluation shows deadline/baggage violations | `lib/policy-engine.ts`, `lib/recovery-engine.ts` | `lib/policy-engine.test.ts`, `lib/recovery-engine.test.ts` |
 | Atlas is used for travel evidence | Search/verification source is labeled per candidate and fare | `app/api/atlas/*`, `lib/atlas/*` | Atlas adapter/parser/client tests + `bun run atlas:smoke` |
 | LLM cannot override safety | Decision is computed before Qwen explanation is requested | `lib/recovery-engine.ts`, `app/api/agent/explain/route.ts` | `lib/decision-explainer.test.ts` |
@@ -142,8 +148,11 @@ bun run atlas:smoke  # Read-only Atlas CLI verification test
 ## Getting Started
 
 ```bash
+cp .env.example .env.local
 bun install
 bun run dev
 ```
+
+`DASHSCOPE_API_KEY` is optional for local verification: without it, intent extraction and decision explanation fall back to deterministic code. This keeps the core recovery flow testable even when hosted-model credentials or network access are unavailable.
 
 Open [http://localhost:3020](http://localhost:3020) to view the TripIntent passenger experience, [http://localhost:3020/admin](http://localhost:3020/admin) for the live operator view, or [http://localhost:3020/operations](http://localhost:3020/operations) for the Business Operations Control Center.
