@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MODEL="${LOCAL_QWEN_MODEL:-mlx-community/Qwen3.5-27B-4bit}"
+MODEL="${LOCAL_QWEN_MODEL:-mlx-community/Qwen3.5-9B-MLX-4bit}"
 DATA="${TRIPINTENT_QWEN_DATA:-training/qwen-tripintent}"
-ADAPTER="${TRIPINTENT_QWEN_ADAPTER:-.artifacts/qwen-tripintent-lora}"
+ADAPTER="${TRIPINTENT_QWEN_ADAPTER:-.artifacts/qwen-tripintent-lora-9b}"
 ITERS="${TRIPINTENT_QWEN_ITERS:-40}"
 LAYERS="${TRIPINTENT_QWEN_LAYERS:-4}"
 

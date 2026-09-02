@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ChevronRight, X } from "lucide-react";
 import { AgentConsole } from "@/components/agent-console";
+import { AgentOrchestrationTrace } from "@/components/agent-orchestration-trace";
 import { CaseCard } from "@/components/case-card";
 import { DecisionTrace } from "@/components/decision-trace";
 import { useDemo } from "@/lib/demo-store";
@@ -95,6 +96,7 @@ export function AgentTraceDrawer() {
                 <CaseCard />
                 <DecisionTrace />
               </div>
+              <AgentOrchestrationTrace />
               <AgentConsole />
             </div>
           </aside>

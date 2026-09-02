@@ -24,14 +24,15 @@ $$\text{Disruption Signal} \longrightarrow \text{Outcome Contract} \longrightarr
 
 ---
 
-## Domain Model: Qwen3.5-27B for Travel Recovery
+## Domain Model: Qwen3.5-9B for Travel Recovery
 
-TripIntent uses **`mlx-community/Qwen3.5-27B-4bit`** as its local/self-hosted language model on Apple Silicon. The model is intentionally **not** the policy engine. Its role is bounded to language-heavy tasks where an LLM adds value while deterministic code retains authority:
+TripIntent uses **`mlx-community/Qwen3.5-9B-MLX-4bit`** as its default local/self-hosted language model on Apple Silicon. The 9B profile is intentionally chosen as a resource-aware fit for the 32 GB development Mac while still leaving deterministic code in control of safety-critical decisions. The model is **not** the policy engine; its role is bounded to language-heavy tasks where an LLM adds value while deterministic code retains authority:
 
 - **Traveler intent normalization** — English/Vietnamese travel briefs → a strict Outcome Contract (`latestArrival`, flexibility, baggage, delegated extra spend, autopilot).
 - **Read-only decision explanation** — explains why the deterministic recovery engine selected/rejected options without changing flight, fare, constraints, or approval state.
 - **Privacy-first inference** — PNR, labeled identity fields, payment-card data, email, and phone are redacted before model inference.
 - **Deployment resilience** — the Mac can run Qwen locally; GitHub/VPS do not ship model weights and Demo mode remains usable through deterministic fallback.
+- **Resource-aware default** — Qwen3.5-9B 4-bit is the normal development/runtime profile; Qwen3.5-27B remains an optional benchmark profile only and is not required for the demo or deployment.
 
 ### TripIntent LoRA specialization
 
@@ -51,8 +52,8 @@ TRIPINTENT_QWEN_ITERS=40 bash scripts/qwen-lora-train.sh
 
 # Serve the base model with the trained TripIntent adapter.
 mlx_lm.server \
-  --model mlx-community/Qwen3.5-27B-4bit \
-  --adapter-path .artifacts/qwen-tripintent-lora \
+  --model mlx-community/Qwen3.5-9B-MLX-4bit \
+  --adapter-path .artifacts/qwen-tripintent-lora-9b \
   --host 127.0.0.1 \
   --port 8080 \
   --chat-template-args '{"enable_thinking":false}'
@@ -67,7 +68,7 @@ The committed train/validation/test files are intentionally small and reviewable
 ```text
 Traveler natural-language brief
   ↓
-Qwen3.5-27B 4-bit intent extraction (local/self-hosted OpenAI-compatible endpoint)
+Qwen3.5-9B 4-bit intent extraction (local/self-hosted OpenAI-compatible endpoint)
   ↘ deterministic TypeScript fallback (zero crash guarantee)
   ↓
 TravelIntent Contract (Arrival deadline · Baggage allowance · Flexibility · Spend Authority)
@@ -89,6 +90,33 @@ Fulfilment & Post-Booking Operations (ATRIP Model)
   ├─ Modeled AP / AR & Refund Exposure
   └─ Unit Margin Protection (12% gross profit preserved)
 ```
+
+---
+
+## Bounded Agent Orchestration (Qwen → Atlas Tools)
+
+TripIntent also includes a judge/dev orchestration harness that makes the agent loop explicit without weakening the production safety model. Qwen may choose the **next tool**, but only from a deterministic allow-list derived from runtime state. Tool execution, travel constraints, spending authority, fare verification, and passenger approval remain code-owned guardrails.
+
+```text
+Qwen Planner
+  ↓ chooses one allow-listed action
+load_contract / inspect_disruption / search_alternatives / evaluate_contract
+  ↓
+Atlas Live search + verify + baggage evidence
+  ↓
+Deterministic Policy Guardian
+  ├─ within authority → continue
+  └─ over authority / fare increase → request_approval and STOP
+```
+
+Two smoke harnesses keep this claim reproducible:
+
+```bash
+bun scripts/agent-loop-smoke.ts       # Qwen planner + deterministic/mock tools
+bun scripts/agent-loop-live-smoke.ts  # Qwen planner + Atlas Sandbox Live; refuses fallback evidence
+```
+
+The live harness can reject a selected Atlas offer after verification (for example when baggage cannot be confirmed), return to the remaining candidates, and re-run deterministic evaluation. It never invents a `book_flight` tool and never auto-approves delegated spend. This orchestration path is kept as **judge/dev evidence** until it has enough regression coverage to replace any part of the stable traveler recovery workflow.
 
 ---
 
@@ -151,15 +179,16 @@ Navigate to `/operations` in the app to inspect:
 ## Provenance & Attribution
 
 - **Development Tooling**: Qoder IDE
-- **LLM Intent Parser**: open-weight Qwen3.5-27B 4-bit through a local/self-hosted OpenAI-compatible endpoint (`LOCAL_QWEN_CHAT_COMPLETIONS_URL`), with deterministic fallback
+- **LLM Intent Parser**: open-weight Qwen3.5-9B 4-bit through a local/self-hosted OpenAI-compatible endpoint (`LOCAL_QWEN_CHAT_COMPLETIONS_URL`), with deterministic fallback
 - **LLM Decision Explanation**: the same local/self-hosted Qwen model explains an already-computed deterministic decision; it cannot change selection, policy, price, or approval state
+- **Bounded Agent Planner**: Qwen can select the next action only from a deterministic runtime allow-list; unknown or disallowed tool choices are rejected and fall back safely
 - **Disruption Signal**: simulated schedule-change event for the hackathon scenario; never presented as Atlas monitoring data
 - **Flight & Retailing Infrastructure**: Atlas Flight Booking Skill & Sandbox for search, offer verification, baggage lookup, and price re-check
 - **Deterministic Safety Layer**: hard travel constraints and delegated spending authority are enforced in TypeScript, not delegated to the LLM
 - **Model Privacy Boundary**: traveler text is redacted before it reaches the configured inference endpoint; PNR, labeled identity fields, payment-card numbers, email addresses, and phone numbers are not intentionally forwarded
 - **Token Control**: intent extraction uses one structured Qwen call with a 180-token output cap; explanation uses one read-only call capped at 300 tokens, with deterministic fallbacks for both paths
 - **AI Runtime Evidence**: `/api/ai/health` probes the self-hosted OpenAI-compatible model catalog and reports whether Qwen is configured, reachable, and ready; the header surfaces Qwen Local vs deterministic fallback without exposing secrets
-- **Deployment Split**: model weights live only in the local Hugging Face/MLX cache; GitHub and the VPS contain application code only and do not require the 27B model to boot
+- **Deployment Split**: model weights live only in the local Hugging Face/MLX cache; GitHub and the VPS contain application code only and do not require a local Qwen model to boot
 - **Persistence**: device-scoped SQLite database
 - **P&L Model**: 12% demo service-margin assumption (minimum $6); AP/AR modeled transparently
 
@@ -176,6 +205,7 @@ Navigate to `/operations` in the app to inspect:
 | Cheapest can be rejected | Candidate evaluation shows deadline/baggage violations | `lib/policy-engine.ts`, `lib/recovery-engine.ts` | `lib/policy-engine.test.ts`, `lib/recovery-engine.test.ts` |
 | Atlas is used for travel evidence | Search/verification source is labeled per candidate and fare | `app/api/atlas/*`, `lib/atlas/*` | Atlas adapter/parser/client tests + `bun run atlas:smoke` |
 | LLM cannot override safety | Decision is computed before Qwen explanation is requested | `lib/recovery-engine.ts`, `app/api/agent/explain/route.ts` | `lib/decision-explainer.test.ts` |
+| Qwen can orchestrate tools without owning policy | Planner selects only from state-derived `allowedTools`; Atlas Live smoke refuses simulated fallback | `lib/agent-planner.ts`, `scripts/agent-loop-live-smoke.ts` | `lib/agent-planner.test.ts`, `bun scripts/agent-loop-smoke.ts`, `bun scripts/agent-loop-live-smoke.ts` |
 | Self-hosted AI is verifiable | Header badge and `/api/ai/health` show configured / connected / model-ready state | `app/api/ai/health/route.ts`, `components/nav-header.tsx`, `lib/qwen-runtime.ts` | `lib/qwen-runtime.test.ts`, `bun run qwen:smoke` |
 | Human-in-the-loop authority gate | `$10` demo scenario pauses before over-authority action | `lib/recovery-engine.ts`, `components/action-zone.tsx` | recovery authority/approval tests |
 | Operator observability | Admin shows the same persisted traveler decision stream | `app/api/admin/live/route.ts`, `lib/admin-live.ts`, `components/admin-dashboard.tsx` | SQLite-backed runtime state |
@@ -192,6 +222,8 @@ bun run lint         # ESLint check
 bun run build        # Production bundle build
 bun run atlas:smoke  # Read-only Atlas CLI verification test
 bun run qwen:smoke   # OpenAI-compatible local Qwen endpoint verification
+bun scripts/agent-loop-smoke.ts       # Bounded Qwen planner with deterministic tool evidence
+bun scripts/agent-loop-live-smoke.ts  # Bounded Qwen planner against Atlas Sandbox Live
 ```
 
 ---
@@ -206,12 +238,12 @@ bun run dev
 
 ### Local Qwen on Apple Silicon
 
-The repository does **not** contain model weights. On the development Mac, install MLX-LM and run the quantized 27B model as a local OpenAI-compatible server:
+The repository does **not** contain model weights. On the development Mac, install MLX-LM and run the quantized 9B model as a local OpenAI-compatible server:
 
 ```bash
 uv tool install mlx-lm
 mlx_lm.server \
-  --model mlx-community/Qwen3.5-27B-4bit \
+  --model mlx-community/Qwen3.5-9B-MLX-4bit \
   --host 127.0.0.1 \
   --port 8080 \
   --chat-template-args '{"enable_thinking":false}'

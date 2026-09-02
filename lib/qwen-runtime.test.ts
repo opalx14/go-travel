@@ -35,7 +35,7 @@ describe("local Qwen runtime", () => {
     expect(localQwenConfig()).toBeNull();
   });
 
-  test("uses the MLX 27B default model and bounded timeout", () => {
+  test("uses the MLX 9B default model and bounded timeout", () => {
     process.env.LOCAL_QWEN_CHAT_COMPLETIONS_URL =
       "http://127.0.0.1:8080/v1/chat/completions";
     delete process.env.LOCAL_QWEN_MODEL;

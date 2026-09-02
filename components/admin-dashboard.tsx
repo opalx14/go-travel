@@ -923,14 +923,14 @@ function AITokenBudgetView({ report }: { report: OperationsReport }) {
               <p className="label-caps text-violet-400">Compute Telemetry</p>
               <h2 className="mt-1 text-lg font-semibold text-white">Pipeline Execution Costs</h2>
             </div>
-            <span className="font-mono text-[10px] text-slate-400">MODEL: QWEN3.5-27B-4BIT</span>
+            <span className="font-mono text-[10px] text-slate-400">MODEL: QWEN3.5-9B-4BIT</span>
           </div>
 
           <div className="mt-5 space-y-3">
             {[
               {
                 op: "Traveler Intent Extraction",
-                engine: "Qwen3.5-27B 4-bit (Self-hosted MLX)",
+                engine: "Qwen3.5-9B 4-bit (Self-hosted MLX)",
                 tokens: "~320 tokens",
                 cost: "API $0",
                 status: "SELF-HOSTED",

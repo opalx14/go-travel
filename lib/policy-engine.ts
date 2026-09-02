@@ -171,16 +171,19 @@ export function runPolicyCheck(
 ): PolicyCheckResult {
   const withinAuthority = selected.extraCostUsd <= intent.maxExtraSpendUsd;
 
+  const extraCost = selected.extraCostUsd.toFixed(2).replace(/\.00$/, "");
+  const authority = intent.maxExtraSpendUsd.toFixed(2).replace(/\.00$/, "");
+
   if (!withinAuthority) {
     return {
       withinAuthority: false,
-      summary: `Travel constraints satisfied · +$${selected.extraCostUsd} exceeds the $${intent.maxExtraSpendUsd} authority — passenger approval required`,
+      summary: `Travel constraints satisfied · +$${extraCost} exceeds the $${authority} authority — passenger approval required`,
     };
   }
 
   return {
     withinAuthority: true,
-    summary: `+$${selected.extraCostUsd} is within the $${intent.maxExtraSpendUsd} spending authority · ${
+    summary: `+$${extraCost} is within the $${authority} spending authority · ${
       intent.autopilot ? "Autopilot authorized to execute" : "manual approval required"
     }`,
   };

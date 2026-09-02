@@ -53,7 +53,7 @@ function AIRuntimeBadge() {
   const ready = Boolean(health?.connected && health.modelReady);
   const configuredButDown = Boolean(health?.configured && !ready);
   const label = ready
-    ? "Qwen Local · 27B ready"
+    ? "Qwen Local · 9B ready"
     : configuredButDown
       ? "Qwen Local · unavailable"
       : health

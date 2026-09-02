@@ -122,4 +122,13 @@ describe("runPolicyCheck", () => {
     expect(check.withinAuthority).toBe(false);
     expect(check.summary).toContain("passenger approval required");
   });
+
+  test("formats provider-adjusted spend without floating-point noise", () => {
+    const check = runPolicyCheck(
+      { ...flightB, extraCostUsd: 59.959999999999994 },
+      DEFAULT_INTENT
+    );
+    expect(check.summary).toContain("+$59.96");
+    expect(check.summary).not.toContain("59.959999");
+  });
 });

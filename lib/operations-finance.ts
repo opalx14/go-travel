@@ -659,7 +659,7 @@ function buildRubricScorecard(): RubricScorecard {
       weightMax: 4,
       score: 4,
       description: "Extracts structured contract parameters from unstructured traveler text across English and Vietnamese via self-hosted Qwen.",
-      evidence: "Dual parser with Qwen3.5-27B 4-bit through a local OpenAI-compatible endpoint + deterministic regex fallback.",
+      evidence: "Dual parser with Qwen3.5-9B 4-bit through a local OpenAI-compatible endpoint + deterministic regex fallback.",
       status: "verified",
     },
     {
@@ -706,7 +706,7 @@ function buildRubricScorecard(): RubricScorecard {
       title: "Self-hosted Qwen & Token Efficiency",
       weightMax: 4,
       score: 4,
-      description: "Uses open-weight Qwen3.5-27B 4-bit with strict output caps while deterministic policy code offloads constraint math from the model.",
+      description: "Uses open-weight Qwen3.5-9B 4-bit with strict output caps while deterministic policy code offloads constraint math from the model.",
       evidence: "Modeled telemetry tracks ~480 tokens/case; external model API fee is $0 and infrastructure compute is deployment-dependent.",
       status: "verified",
     },
@@ -857,7 +857,7 @@ function summarize(bookings: ClientBookingReport[]): OperationsSummary {
       : 0;
 
   const aiTokenEconomics: AITokenEconomics = {
-    model: "Qwen3.5-27B 4-bit (self-hosted MLX)",
+    model: "Qwen3.5-9B 4-bit (self-hosted MLX)",
     totalTokens,
     promptTokens,
     completionTokens,
