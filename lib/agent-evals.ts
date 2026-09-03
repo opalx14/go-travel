@@ -40,7 +40,9 @@ function result(
 
 function provider(options: {
   alternatives?: FlightOption[];
-  verification?: OfferVerification;
+  verification?:
+    | OfferVerification
+    | ((option: FlightOption) => OfferVerification);
 } = {}): TripDataProvider {
   return {
     async getDisruption() {
@@ -50,6 +52,9 @@ function provider(options: {
       return options.alternatives ?? ALTERNATIVES;
     },
     async verifyOffer(option) {
+      if (typeof options.verification === "function") {
+        return options.verification(option);
+      }
       return (
         options.verification ?? {
           priceChange: "unchanged",
@@ -192,6 +197,88 @@ export async function runAgentEvals(): Promise<AgentEvalReport> {
         : "Baggage-adjusted spend did not trigger the expected approval gate."
     )
   );
+
+  const selfRepairAlternatives: FlightOption[] = [
+    {
+      ...ALTERNATIVES[1],
+      id: "eval-self-repair-first",
+      label: "Atlas Primary",
+      source: "ATLAS_SANDBOX",
+      atlasOfferId: "eval_offer_primary",
+      baggageKg: undefined,
+      replacementPriceUsd: 12,
+      extraCostUsd: 12,
+    },
+    {
+      ...ALTERNATIVES[1],
+      id: "eval-self-repair-second",
+      label: "Atlas Backup",
+      source: "ATLAS_SANDBOX",
+      atlasOfferId: "eval_offer_backup",
+      baggageKg: undefined,
+      replacementPriceUsd: 20,
+      extraCostUsd: 20,
+    },
+  ];
+
+  for (const failure of ["expired", "failed"] as const) {
+    const selfRepairOutcome = await runRecovery(
+      ORIGINAL_FLIGHT,
+      DEFAULT_INTENT,
+      provider({
+        alternatives: selfRepairAlternatives,
+        verification: (option) =>
+          option.id === "eval-self-repair-first"
+            ? {
+                priceChange: failure,
+                source: "ATLAS_SANDBOX",
+                summary:
+                  failure === "expired"
+                    ? "Primary offer expired during verification"
+                    : "Primary offer verification failed",
+              }
+            : {
+                priceChange: "unchanged",
+                previousPrice: 20,
+                currentPrice: 20,
+                currency: "USD",
+                source: "ATLAS_SANDBOX",
+                summary: "Backup fare unchanged",
+                baggageSupported: true,
+                baggageStatus: "available",
+                baggageOptions: [
+                  {
+                    baggageId: `bag-self-repair-${failure}`,
+                    segmentId: `seg-self-repair-${failure}`,
+                    weightKg: 20,
+                    price: 5,
+                    currency: "USD",
+                  },
+                ],
+              },
+      })
+    );
+    const recoveredWithBackup =
+      selfRepairOutcome.status === "RECOVERED" &&
+      selfRepairOutcome.selected?.id === "eval-self-repair-second" &&
+      selfRepairOutcome.evaluations.find(
+        (item) => item.option.id === "eval-self-repair-first"
+      )?.valid === false;
+
+    results.push(
+      result(
+        `self-repair-${failure}`,
+        failure === "expired"
+          ? "Self-repair after Atlas offer expiry"
+          : "Self-repair after Atlas verification failure",
+        "RESILIENCE",
+        recoveredWithBackup,
+        recoveredWithBackup
+          ? `Primary offer ${failure}; agent rejected it and recovered with the next policy-valid Atlas candidate.`
+          : `Agent did not recover safely after the primary offer ${failure}.`
+      )
+    );
+  }
 
   const priceIncreaseOutcome = await runRecovery(
     ORIGINAL_FLIGHT,

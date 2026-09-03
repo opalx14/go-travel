@@ -177,6 +177,115 @@ describe("runRecovery — fare verification branches", () => {
 });
 
 describe("runRecovery — Atlas baggage validation", () => {
+  test("self-repairs when the cheapest Atlas offer expires during verification", async () => {
+    const provider = fakeProvider(
+      [
+        option({
+          id: "atlas-expired",
+          label: "Atlas Expired",
+          source: "ATLAS_SANDBOX",
+          baggageKg: undefined,
+          replacementPriceUsd: 12,
+          extraCostUsd: 12,
+        }),
+        option({
+          id: "atlas-repair",
+          label: "Atlas Repair",
+          source: "ATLAS_SANDBOX",
+          baggageKg: undefined,
+          replacementPriceUsd: 20,
+          extraCostUsd: 20,
+        }),
+      ],
+      (selected) =>
+        selected.id === "atlas-expired"
+          ? {
+              priceChange: "expired",
+              source: "ATLAS_SANDBOX",
+              summary: "Offer expired before verification",
+            }
+          : {
+              priceChange: "unchanged",
+              previousPrice: 20,
+              currentPrice: 20,
+              currency: "USD",
+              source: "ATLAS_SANDBOX",
+              summary: "Fare unchanged",
+              baggageSupported: true,
+              baggageStatus: "available",
+              baggageOptions: [
+                {
+                  baggageId: "bag-repair",
+                  segmentId: "seg-repair",
+                  weightKg: 20,
+                  price: 5,
+                  currency: "USD",
+                },
+              ],
+            }
+    );
+
+    const outcome = await runRecovery(ORIGINAL_FLIGHT, DEFAULT_INTENT, provider);
+    expect(outcome.status).toBe("RECOVERED");
+    expect(outcome.selected?.id).toBe("atlas-repair");
+    expect(outcome.evaluations.find((item) => item.option.id === "atlas-expired")?.valid).toBe(false);
+    expect(outcome.steps.some((step) => step.title === "Atlas Expired rejected after verification")).toBe(true);
+  });
+
+  test("self-repairs when Atlas verification fails for the first candidate", async () => {
+    const provider = fakeProvider(
+      [
+        option({
+          id: "atlas-failed",
+          label: "Atlas Failed",
+          source: "ATLAS_SANDBOX",
+          baggageKg: undefined,
+          replacementPriceUsd: 10,
+          extraCostUsd: 10,
+        }),
+        option({
+          id: "atlas-second",
+          label: "Atlas Second",
+          source: "ATLAS_SANDBOX",
+          baggageKg: undefined,
+          replacementPriceUsd: 18,
+          extraCostUsd: 18,
+        }),
+      ],
+      (selected) =>
+        selected.id === "atlas-failed"
+          ? {
+              priceChange: "failed",
+              source: "ATLAS_SANDBOX",
+              summary: "Provider verification unavailable",
+            }
+          : {
+              priceChange: "unchanged",
+              previousPrice: 18,
+              currentPrice: 18,
+              currency: "USD",
+              source: "ATLAS_SANDBOX",
+              summary: "Fare unchanged",
+              baggageSupported: true,
+              baggageStatus: "available",
+              baggageOptions: [
+                {
+                  baggageId: "bag-second",
+                  segmentId: "seg-second",
+                  weightKg: 20,
+                  price: 4,
+                  currency: "USD",
+                },
+              ],
+            }
+    );
+
+    const outcome = await runRecovery(ORIGINAL_FLIGHT, DEFAULT_INTENT, provider);
+    expect(outcome.status).toBe("RECOVERED");
+    expect(outcome.selected?.id).toBe("atlas-second");
+    expect(outcome.steps.some((step) => step.detail.includes("provider verification failure"))).toBe(true);
+  });
+
   test("baggage cost is added before the spending-authority gate", async () => {
     const atlasOption = option({
       id: "atlas-20kg",

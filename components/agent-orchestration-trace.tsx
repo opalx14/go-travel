@@ -8,6 +8,7 @@ import {
   GitBranch,
   Hand,
   LockKeyhole,
+  RotateCcw,
   Search,
   Sparkles,
 } from "lucide-react";
@@ -37,6 +38,8 @@ export function AgentOrchestrationTrace() {
   const searchDone = hasStep(ids, "step-evaluate") || hasStep(ids, "step-select");
   const policyDone = hasStep(ids, "step-policy");
   const verifyDone = Boolean(run?.verification) || hasStep(ids, "step-verify");
+  const selfRepairTriggered =
+    hasStep(ids, "step-provider-reject") || hasStep(ids, "step-baggage-reject");
   const approvalBlocked = run?.status === "NEEDS_APPROVAL" && phase === "complete";
   const explanationDone = Boolean(run?.reasoning);
 
@@ -84,6 +87,16 @@ export function AgentOrchestrationTrace() {
           ? "Atlas Sandbox"
           : "Simulated fallback"
         : "Pending",
+    },
+    {
+      id: "repair",
+      label: "Recovery supervisor",
+      detail: selfRepairTriggered
+        ? "Rejected a provider-invalid candidate and re-selected the next policy-valid recovery without relaxing the contract."
+        : "Armed to retry the next policy-valid candidate when an Atlas offer expires, verification fails, or baggage cannot be confirmed.",
+      icon: RotateCcw,
+      state: selfRepairTriggered ? "done" : "pending",
+      provenance: selfRepairTriggered ? "Self-repair executed" : "Self-repair armed",
     },
     {
       id: "approval",

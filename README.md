@@ -120,7 +120,7 @@ The live harness can reject a selected Atlas offer after verification (for examp
 
 ### Agent stress / safety evals
 
-TripIntent also exposes a reproducible deterministic eval matrix in the Technical Proof drawer and through `bun scripts/agent-evals.ts`. The current suite passes **8/8 gates** covering: cheapest-but-late rejection, delegated-spend approval, baggage-adjusted re-check, provider fare-increase checkpoint, no-inventory safe failure, midnight-crossing time correctness, privacy redaction, and rejection of invented planner tools. These gates intentionally run without network/model dependencies; Qwen + Atlas Live behavior remains a separate smoke test so provider availability cannot manufacture a safety pass.
+TripIntent also exposes a reproducible deterministic eval matrix in the Technical Proof drawer and through `bun scripts/agent-evals.ts`. The current suite passes **10/10 gates** covering: cheapest-but-late rejection, delegated-spend approval, baggage-adjusted re-check, self-repair after Atlas offer expiry, self-repair after provider verification failure, provider fare-increase checkpoint, no-inventory safe failure, midnight-crossing time correctness, privacy redaction, and rejection of invented planner tools. These gates intentionally run without network/model dependencies; Qwen + Atlas Live behavior remains a separate smoke test so provider availability cannot manufacture a safety pass.
 
 ---
 
@@ -210,7 +210,7 @@ Navigate to `/operations` in the app to inspect:
 | Atlas is used for travel evidence | Search/verification source is labeled per candidate and fare | `app/api/atlas/*`, `lib/atlas/*` | Atlas adapter/parser/client tests + `bun run atlas:smoke` |
 | LLM cannot override safety | Decision is computed before Qwen explanation is requested | `lib/recovery-engine.ts`, `app/api/agent/explain/route.ts` | `lib/decision-explainer.test.ts` |
 | Qwen can orchestrate tools without owning policy | Planner selects only from state-derived `allowedTools`; Atlas Live smoke refuses simulated fallback | `lib/agent-planner.ts`, `scripts/agent-loop-live-smoke.ts` | `lib/agent-planner.test.ts`, `bun scripts/agent-loop-smoke.ts`, `bun scripts/agent-loop-live-smoke.ts` |
-| Safety/resilience gates stay reproducible | Technical Proof shows the deterministic eval matrix; current baseline is 8/8 PASS | `lib/agent-evals.ts`, `app/api/agent/evals/route.ts`, `components/agent-eval-panel.tsx` | `lib/agent-evals.test.ts`, `bun scripts/agent-evals.ts` |
+| Safety/resilience gates stay reproducible | Technical Proof shows the deterministic eval matrix; current baseline is 10/10 PASS including provider self-repair | `lib/agent-evals.ts`, `app/api/agent/evals/route.ts`, `components/agent-eval-panel.tsx` | `lib/agent-evals.test.ts`, `bun scripts/agent-evals.ts` |
 | Self-hosted AI is verifiable | Header badge and `/api/ai/health` show configured / connected / model-ready state | `app/api/ai/health/route.ts`, `components/nav-header.tsx`, `lib/qwen-runtime.ts` | `lib/qwen-runtime.test.ts`, `bun run qwen:smoke` |
 | Human-in-the-loop authority gate | `$10` demo scenario pauses before over-authority action | `lib/recovery-engine.ts`, `components/action-zone.tsx` | recovery authority/approval tests |
 | Operator observability | Admin shows the same persisted traveler decision stream | `app/api/admin/live/route.ts`, `lib/admin-live.ts`, `components/admin-dashboard.tsx` | SQLite-backed runtime state |

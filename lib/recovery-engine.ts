@@ -47,6 +47,17 @@ function rejectForUnconfirmedBaggage(
   };
 }
 
+function rejectForVerificationFailure(
+  evaluation: OptionEvaluation,
+  reason: string
+): OptionEvaluation {
+  return {
+    ...evaluation,
+    valid: false,
+    reasons: [...evaluation.reasons, reason],
+  };
+}
+
 function applyBaggageRequirement(
   selected: FlightOption,
   verification: OfferVerification,
@@ -223,12 +234,9 @@ export async function runRecovery(
     const verification = await provider.verifyOffer(selected);
 
     // A price increase is a mandatory passenger checkpoint. Expired/failed
-    // offers also stop here; no baggage command is run after those outcomes.
-    if (
-      verification.priceChange === "increased" ||
-      verification.priceChange === "expired" ||
-      verification.priceChange === "failed"
-    ) {
+    // offers are treated as candidate-local failures: reject that offer and
+    // self-repair by trying the next policy-valid candidate when one exists.
+    if (verification.priceChange === "increased") {
       return verifyOutcome(verification, selected, {
         intent,
         event,
@@ -236,6 +244,48 @@ export async function runRecovery(
         policyCheck: null,
         steps,
       });
+    }
+
+    if (
+      verification.priceChange === "expired" ||
+      verification.priceChange === "failed"
+    ) {
+      const failedSelection = selected;
+      const currentEvaluation = evaluations.find(
+        (evaluation) => evaluation.option.id === failedSelection.id
+      );
+      const failureReason =
+        verification.priceChange === "expired"
+          ? "Atlas offer expired during verification"
+          : "Atlas offer verification failed";
+
+      if (currentEvaluation) {
+        evaluations = replaceEvaluation(
+          evaluations,
+          rejectForVerificationFailure(currentEvaluation, failureReason)
+        );
+      }
+
+      steps.push({
+        id: `step-provider-reject-${steps.length}`,
+        title: `${failedSelection.label} rejected after verification`,
+        detail: `${failureReason} · trying the next policy-valid candidate`,
+        tone: "danger",
+      });
+
+      selected = selectBestOption(evaluations);
+      if (!selected) {
+        return verifyOutcome(verification, failedSelection, {
+          intent,
+          event,
+          evaluations,
+          policyCheck: null,
+          steps,
+        });
+      }
+
+      announceSelection(selected, " after provider verification failure");
+      continue;
     }
 
     const baggageResult = applyBaggageRequirement(selected, verification, intent);
