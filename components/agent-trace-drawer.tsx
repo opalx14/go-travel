@@ -12,6 +12,7 @@ import { AgentBenchmarkPanel } from "@/components/agent-benchmark-panel";
 import { AgentAuditPanel } from "@/components/agent-audit-panel";
 import { AgentAdversarialPanel } from "@/components/agent-adversarial-panel";
 import { JudgePreflightPanel } from "@/components/judge-preflight-panel";
+import { JudgeFastPathPanel } from "@/components/judge-fast-path-panel";
 import { AgentToolManifestPanel } from "@/components/agent-tool-manifest-panel";
 import { CaseCard } from "@/components/case-card";
 import { DecisionTrace } from "@/components/decision-trace";
@@ -108,6 +109,7 @@ export function AgentTraceDrawer() {
               <AgentOrchestrationTrace />
               <AgentTelemetryPanel />
               <AgentEvidenceExport />
+              <JudgeFastPathPanel />
               <JudgePreflightPanel />
               <AgentBenchmarkPanel />
               <AgentAdversarialPanel />
