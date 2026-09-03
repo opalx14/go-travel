@@ -1,4 +1,8 @@
 import { planNextAgentTool, type AgentPlannerState } from "./agent-planner";
+import {
+  createAgentAuditEvidence,
+  verifyAgentAuditEvidence,
+} from "./agent-audit";
 import { validateAgentToolManifest } from "./agent-tool-manifest";
 import { evaluateOption, runPolicyCheck } from "./policy-engine";
 import { redactSensitiveTravelText } from "./privacy-redaction";
@@ -640,6 +644,42 @@ export async function runAgentEvals(): Promise<AgentEvalReport> {
       manifestViolations.length === 0
         ? "Capability manifest keeps Atlas tools read-only and the approval boundary non-executable."
         : `Capability violations: ${manifestViolations.join("; ")}`
+    )
+  );
+
+  const auditOutcome = await runRecovery(
+    ORIGINAL_FLIGHT,
+    DEFAULT_INTENT,
+    provider()
+  );
+  const auditEvidence = await createAgentAuditEvidence(auditOutcome);
+  const wordingOnly = {
+    ...auditOutcome,
+    reasoning: {
+      source: "QWEN" as const,
+      headline: "Different explanation wording",
+      selectedReason: "Different explanation wording",
+      rejectedReason: "Different explanation wording",
+      authorityReason: "Different explanation wording",
+      nextAction: "Different explanation wording",
+    },
+  };
+  const tamperedAuditOutcome = structuredClone(auditOutcome);
+  if (tamperedAuditOutcome.selected) {
+    tamperedAuditOutcome.selected.extraCostUsd += 1;
+  }
+  const auditIntegrityPassed =
+    (await verifyAgentAuditEvidence(wordingOnly, auditEvidence)) &&
+    !(await verifyAgentAuditEvidence(tamperedAuditOutcome, auditEvidence));
+  results.push(
+    result(
+      "decision-audit-integrity",
+      "Fingerprint decision facts without trusting Qwen prose",
+      "TOOLING",
+      auditIntegrityPassed,
+      auditIntegrityPassed
+        ? "Qwen wording leaves the decision hash unchanged, while a modified fare invalidates the audit fingerprint."
+        : "Decision audit fingerprint did not enforce the expected integrity boundary."
     )
   );
 
