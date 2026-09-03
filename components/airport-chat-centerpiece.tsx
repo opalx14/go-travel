@@ -14,6 +14,7 @@ import {
   Sparkles,
   Zap,
 } from "lucide-react";
+import { JudgeDemoEntry } from "@/components/judge-demo-entry";
 import { useDemo } from "@/lib/demo-store";
 import { cn } from "@/lib/utils";
 
@@ -283,37 +284,12 @@ export function AirportChatCenterpiece({ inline = false }: { inline?: boolean })
           </div>
         )}
 
-        {/* Judge fast path: one click shows autonomy vs approval without bypassing the real engine. */}
-        <div className="mt-3 hidden rounded-xl border border-violet-400/15 bg-violet-400/[0.04] p-2.5 sm:block">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-violet-300">
-                Judge Fast Path
-              </p>
-              <p className="mt-0.5 text-[10px] text-slate-500">
-                One click: intent → disruption → Atlas search → policy → Qwen Local explanation.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              <button
-                type="button"
-                disabled={isParsing}
-                onClick={() => void handleJudgeScenario(PRESET_PROMPTS[0].text)}
-                className="rounded-lg border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-[10px] font-bold text-emerald-300 transition hover:bg-emerald-400/15 disabled:opacity-50"
-              >
-                ▶ Auto Recovery · $50
-              </button>
-              <button
-                type="button"
-                disabled={isParsing}
-                onClick={() => void handleJudgeScenario(PRESET_PROMPTS[3].text)}
-                className="rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-1.5 text-[10px] font-bold text-amber-300 transition hover:bg-amber-400/15 disabled:opacity-50"
-              >
-                ▶ Approval Gate · $10
-              </button>
-            </div>
-          </div>
-        </div>
+        <JudgeDemoEntry
+          runtimeMode={runtimeMode}
+          disabled={isParsing}
+          onAutoRecovery={() => void handleJudgeScenario(PRESET_PROMPTS[0].text)}
+          onApprovalGate={() => void handleJudgeScenario(PRESET_PROMPTS[3].text)}
+        />
 
         {/* Quick Suggestion Presets */}
         <div className="mt-3 hidden sm:block">
