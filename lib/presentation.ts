@@ -58,7 +58,38 @@ const STEP_STAGE: Record<string, PipelineStageId> = {
 };
 
 export function stageOfStep(stepId: string): PipelineStageId | undefined {
-  return STEP_STAGE[stepId];
+  const exact = STEP_STAGE[stepId];
+  if (exact) return exact;
+
+  if (
+    stepId.startsWith("step-select-") ||
+    stepId.startsWith("step-escalation-") ||
+    stepId.startsWith("step-provider-reject-") ||
+    stepId.startsWith("step-baggage-reject-") ||
+    stepId === "step-baggage" ||
+    stepId === "step-select-none-after-baggage"
+  ) {
+    return "EVALUATE";
+  }
+
+  if (
+    stepId.startsWith("step-approved-confirm-price") ||
+    stepId.startsWith("step-approved-baggage")
+  ) {
+    return "VERIFY";
+  }
+
+  if (stepId.startsWith("step-approved-authority")) return "EXECUTE";
+  if (stepId.startsWith("step-retry-")) return "SEARCH";
+  return undefined;
+}
+
+/** Dynamic retry titles distinguish Atlas search from Atlas verification. */
+export function stageOfRecoveryStep(step: RecoveryStep): PipelineStageId | undefined {
+  if (step.id.startsWith("step-retry-") && step.title.startsWith("Atlas verify")) {
+    return "VERIFY";
+  }
+  return stageOfStep(step.id);
 }
 
 /** Whether the replay has already played a step belonging to `stage`. */
@@ -66,7 +97,7 @@ export function hasReachedStage(
   playedSteps: RecoveryStep[],
   stage: PipelineStageId
 ): boolean {
-  return playedSteps.some((step) => stageOfStep(step.id) === stage);
+  return playedSteps.some((step) => stageOfRecoveryStep(step) === stage);
 }
 
 /** How much more authority the agent would need to act on its own. */
@@ -159,11 +190,11 @@ export function buildPipeline(
   const captions = stageCaptions(run, intent, trip);
   const reached = new Set(
     playedSteps
-      .map((step) => stageOfStep(step.id))
+      .map((step) => stageOfRecoveryStep(step))
       .filter((stage): stage is PipelineStageId => Boolean(stage))
   );
   const lastReached = playedSteps
-    .map((step) => stageOfStep(step.id))
+    .map((step) => stageOfRecoveryStep(step))
     .filter((stage): stage is PipelineStageId => Boolean(stage))
     .at(-1);
 
@@ -279,6 +310,70 @@ export function recoveryHeadline(outcome: RecoveryOutcome): string {
  * maps to the consumer-language line(s) shown while it runs; stages with two
  * lines rotate on a cosmetic interval only.
  */
+export type ExecutionOwner =
+  | "TRIP_SIGNAL"
+  | "OUTCOME_CONTRACT"
+  | "ATLAS"
+  | "POLICY_GUARDIAN"
+  | "HUMAN_BOUNDARY";
+
+export interface ExecutionActivity {
+  stage: PipelineStageId;
+  owner: ExecutionOwner;
+  ownerLabel: string;
+  stageLabel: string;
+  detail: string;
+}
+
+const EXECUTION_OWNER_BY_STAGE: Record<PipelineStageId, ExecutionOwner> = {
+  OBSERVE: "TRIP_SIGNAL",
+  ASSESS: "OUTCOME_CONTRACT",
+  SEARCH: "ATLAS",
+  EVALUATE: "POLICY_GUARDIAN",
+  POLICY: "POLICY_GUARDIAN",
+  EXECUTE: "HUMAN_BOUNDARY",
+  VERIFY: "ATLAS",
+};
+
+const EXECUTION_OWNER_LABEL: Record<ExecutionOwner, string> = {
+  TRIP_SIGNAL: "Simulated trip signal",
+  OUTCOME_CONTRACT: "Outcome Contract",
+  ATLAS: "Atlas provider",
+  POLICY_GUARDIAN: "Deterministic Policy Guardian",
+  HUMAN_BOUNDARY: "Passenger authority boundary",
+};
+
+const EXECUTION_STAGE_LABEL: Record<PipelineStageId, string> = {
+  OBSERVE: "Observe disruption",
+  ASSESS: "Load constraints",
+  SEARCH: "Search alternatives",
+  EVALUATE: "Evaluate candidates",
+  POLICY: "Check authority",
+  EXECUTE: "Respect consent",
+  VERIFY: "Verify provider evidence",
+};
+
+export function buildExecutionActivity(
+  playedSteps: RecoveryStep[]
+): ExecutionActivity {
+  const latest = [...playedSteps]
+    .reverse()
+    .map((step) => ({ step, stage: stageOfRecoveryStep(step) }))
+    .find((item): item is { step: RecoveryStep; stage: PipelineStageId } =>
+      Boolean(item.stage)
+    );
+
+  const stage = latest?.stage ?? "OBSERVE";
+  const owner = EXECUTION_OWNER_BY_STAGE[stage];
+  return {
+    stage,
+    owner,
+    ownerLabel: EXECUTION_OWNER_LABEL[owner],
+    stageLabel: EXECUTION_STAGE_LABEL[stage],
+    detail: latest?.step.detail ?? "Waiting for the deterministic recovery replay to begin.",
+  };
+}
+
 export const SCANNER_STATUSES: Record<PipelineStageId, string[]> = {
   OBSERVE: ["Checking your trip…"],
   ASSESS: ["Reading your trip priorities…"],
