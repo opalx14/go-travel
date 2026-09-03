@@ -3,6 +3,7 @@ import type {
   FlightOption,
   OfferVerification,
   OptionEvaluation,
+  RecoveryEscalationPlan,
   RecoveryOutcome,
   RecoveryStep,
   TravelIntent,
@@ -15,6 +16,7 @@ import {
 } from "./policy-engine";
 import { ASSUMED_RECOVERABLE_VALUE_USD } from "./scenario";
 import { withReadonlyProviderRetry } from "./provider-retry";
+import { buildRecoveryEscalationPlan } from "./recovery-escalation";
 
 function pushReadonlyRetryStep(
   steps: RecoveryStep[],
@@ -208,15 +210,58 @@ export async function runRecovery(
     tone: rejected.length > 0 ? "danger" : "success",
   });
 
-  // 5. Select the best currently valid option. Atlas search results do not
-  // include baggage weight, so an Atlas winner may still need a read-only
-  // verification + baggage lookup before it can truly satisfy the contract.
-  let selected = selectBestOption(evaluations);
+  // 5. Deterministic recovery-scope ladder. The engine exhausts contract-
+  // preserving scopes in a fixed order and never widens airport/date scope
+  // without an explicit passenger boundary.
+  let escalation = buildRecoveryEscalationPlan(trip, intent, evaluations);
+  for (const scope of escalation.steps) {
+    steps.push({
+      id: `step-escalation-${scope.scope.toLowerCase()}`,
+      title: `${scope.scope.replaceAll("_", " ")} · ${scope.status}`,
+      detail: `${scope.reason} · provenance=${scope.provenance}`,
+      tone:
+        scope.status === "AVAILABLE"
+          ? "success"
+          : scope.status === "REQUIRES_APPROVAL"
+            ? "warning"
+            : "info",
+    });
+  }
+
+  if (escalation.requiresPassengerApproval) {
+    return {
+      status: "NEEDS_APPROVAL",
+      intent,
+      event,
+      evaluations,
+      selected: null,
+      policyCheck: null,
+      steps,
+      approval: "SCOPE_EXPANSION",
+      escalation,
+    };
+  }
+
+  const selectEscalatedCandidate = (): FlightOption | null => {
+    escalation = buildRecoveryEscalationPlan(trip, intent, evaluations);
+    if (escalation.requiresPassengerApproval) return null;
+    const scopedEvaluations = evaluations.map((evaluation) => ({
+      ...evaluation,
+      valid:
+        evaluation.valid && escalation.candidateIds.includes(evaluation.option.id),
+    }));
+    return selectBestOption(scopedEvaluations);
+  };
+
+  // Atlas search results do not include baggage weight, so an Atlas winner may
+  // still need read-only verification + baggage lookup before it can truly
+  // satisfy the contract.
+  let selected = selectEscalatedCandidate();
   if (!selected) {
     steps.push({
       id: "step-select",
       title: "No valid option found",
-      detail: "No alternative satisfies the hard travel constraints",
+      detail: escalation.stopReason,
       tone: "danger",
     });
     return {
@@ -227,6 +272,7 @@ export async function runRecovery(
       selected: null,
       policyCheck: null,
       steps,
+      escalation,
     };
   }
 
@@ -310,14 +356,35 @@ export async function runRecovery(
         tone: "danger",
       });
 
-      selected = selectBestOption(evaluations);
+      selected = selectEscalatedCandidate();
       if (!selected) {
+        if (escalation.requiresPassengerApproval) {
+          steps.push({
+            id: `step-escalation-boundary-${steps.length}`,
+            title: "Broader recovery needs passenger approval",
+            detail: escalation.stopReason,
+            tone: "warning",
+          });
+          return {
+            status: "NEEDS_APPROVAL",
+            intent,
+            event,
+            evaluations,
+            selected: null,
+            policyCheck: null,
+            steps,
+            approval: "SCOPE_EXPANSION",
+            escalation,
+            verification,
+          };
+        }
         return verifyOutcome(verification, failedSelection, {
           intent,
           event,
           evaluations,
           policyCheck: null,
           steps,
+          escalation,
         });
       }
 
@@ -350,22 +417,28 @@ export async function runRecovery(
         tone: "danger",
       });
 
-      selected = selectBestOption(evaluations);
+      selected = selectEscalatedCandidate();
       if (!selected) {
         steps.push({
           id: "step-select-none-after-baggage",
-          title: "No valid option found",
-          detail: `No alternative can confirm the ${intent.minBaggageKg}kg baggage requirement`,
-          tone: "danger",
+          title: escalation.requiresPassengerApproval
+            ? "Broader recovery needs passenger approval"
+            : "No valid option found",
+          detail: escalation.requiresPassengerApproval
+            ? escalation.stopReason
+            : `No alternative can confirm the ${intent.minBaggageKg}kg baggage requirement`,
+          tone: escalation.requiresPassengerApproval ? "warning" : "danger",
         });
         return {
-          status: "FAILED",
+          status: escalation.requiresPassengerApproval ? "NEEDS_APPROVAL" : "FAILED",
           intent,
           event,
           evaluations,
           selected: null,
           policyCheck: null,
           steps,
+          approval: escalation.requiresPassengerApproval ? "SCOPE_EXPANSION" : undefined,
+          escalation,
         };
       }
       announceSelection(selected, " after baggage validation");
@@ -506,6 +579,7 @@ function verifyOutcome(
     evaluations: RecoveryOutcome["evaluations"];
     policyCheck: RecoveryOutcome["policyCheck"];
     steps: RecoveryStep[];
+    escalation?: RecoveryEscalationPlan;
   }
 ): RecoveryOutcome {
   const steps = [...base.steps];

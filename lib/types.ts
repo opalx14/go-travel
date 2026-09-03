@@ -140,7 +140,33 @@ export type RecoveryStatus =
 export type ApprovalKind =
   | "OVER_AUTHORITY"
   | "AUTOPILOT_OFF"
-  | "PRICE_INCREASED";
+  | "PRICE_INCREASED"
+  | "SCOPE_EXPANSION";
+
+/** Deterministic recovery-scope ladder used before any broader search is allowed. */
+export type RecoveryScope =
+  | "EXACT"
+  | "DEPARTURE_FLEX"
+  | "CONNECTION"
+  | "NEARBY_AIRPORT_OR_DATE";
+
+export type EscalationStatus = "AVAILABLE" | "EXHAUSTED" | "REQUIRES_APPROVAL";
+
+export interface RecoveryEscalationStep {
+  scope: RecoveryScope;
+  status: EscalationStatus;
+  reason: string;
+  provenance: "TRAVELER_CONTRACT" | "CANDIDATE_INVENTORY" | "HUMAN_BOUNDARY";
+  candidateIds: string[];
+}
+
+export interface RecoveryEscalationPlan {
+  steps: RecoveryEscalationStep[];
+  selectedScope: Exclude<RecoveryScope, "NEARBY_AIRPORT_OR_DATE"> | null;
+  candidateIds: string[];
+  requiresPassengerApproval: boolean;
+  stopReason: string;
+}
 
 /** Visual tone for timeline rendering. */
 export type StepTone = "info" | "success" | "danger" | "warning";
@@ -178,6 +204,8 @@ export interface RecoveryOutcome {
   approval?: ApprovalKind;
   /** Set when the passenger approved an over-authority recovery. */
   approvedByPassenger?: boolean;
+  /** Deterministic evidence showing which recovery scope was allowed and why. */
+  escalation?: RecoveryEscalationPlan;
   /** Set once the selected offer's fare was verified with the provider. */
   verification?: OfferVerification;
   /** Optional AI explanation of the deterministic policy result. */
