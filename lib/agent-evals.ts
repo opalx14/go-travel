@@ -1,4 +1,5 @@
 import { planNextAgentTool, type AgentPlannerState } from "./agent-planner";
+import { validateAgentToolManifest } from "./agent-tool-manifest";
 import { evaluateOption, runPolicyCheck } from "./policy-engine";
 import { redactSensitiveTravelText } from "./privacy-redaction";
 import { runRecovery } from "./recovery-engine";
@@ -626,6 +627,19 @@ export async function runAgentEvals(): Promise<AgentEvalReport> {
       redacted.redacted
         ? `Redacted kinds: ${redacted.kinds.join(", ")}.`
         : "Sensitive identifiers were not redacted."
+    )
+  );
+
+  const manifestViolations = validateAgentToolManifest();
+  results.push(
+    result(
+      "tool-permission-manifest",
+      "Keep planner capabilities read-only or human-gated",
+      "TOOLING",
+      manifestViolations.length === 0,
+      manifestViolations.length === 0
+        ? "Capability manifest keeps Atlas tools read-only and the approval boundary non-executable."
+        : `Capability violations: ${manifestViolations.join("; ")}`
     )
   );
 

@@ -1,14 +1,14 @@
 import { localQwenConfig } from "./qwen-runtime";
+import {
+  filterPlannerSelectableTools,
+  type AgentToolName,
+} from "./agent-tool-manifest";
 
-export type AgentToolName =
-  | "load_contract"
-  | "inspect_disruption"
-  | "search_alternatives"
-  | "evaluate_contract"
-  | "request_approval"
-  | "verify_offer"
-  | "explain_decision"
-  | "finish";
+export type { AgentToolName } from "./agent-tool-manifest";
+
+function allow(...tools: AgentToolName[]): AgentToolName[] {
+  return filterPlannerSelectableTools(tools);
+}
 
 export interface AgentPlannerState {
   contractLoaded: boolean;
@@ -37,27 +37,27 @@ Return strict JSON only: {"tool":"<allowed tool>","reason":"<short reason>"}.`;
 
 export function allowedAgentTools(state: AgentPlannerState): AgentToolName[] {
   if (!state.contractLoaded && !state.disruptionInspected) {
-    return ["load_contract", "inspect_disruption"];
+    return allow("load_contract", "inspect_disruption");
   }
 
-  if (!state.contractLoaded) return ["load_contract"];
-  if (!state.disruptionInspected) return ["inspect_disruption"];
+  if (!state.contractLoaded) return allow("load_contract");
+  if (!state.disruptionInspected) return allow("inspect_disruption");
 
-  if (state.alternativesFound === null) return ["search_alternatives"];
+  if (state.alternativesFound === null) return allow("search_alternatives");
 
-  if (!state.contractEvaluated) return ["evaluate_contract"];
+  if (!state.contractEvaluated) return allow("evaluate_contract");
 
   if (!state.selectedFlightNo) {
-    return state.explanationReady ? ["finish"] : ["explain_decision"];
+    return state.explanationReady ? allow("finish") : allow("explain_decision");
   }
 
   if (state.approvalRequired && !state.passengerApproved) {
-    return ["request_approval"];
+    return allow("request_approval");
   }
 
-  if (!state.offerVerified) return ["verify_offer"];
-  if (!state.explanationReady) return ["explain_decision"];
-  return ["finish"];
+  if (!state.offerVerified) return allow("verify_offer");
+  if (!state.explanationReady) return allow("explain_decision");
+  return allow("finish");
 }
 
 export function deterministicPlannerFallback(
