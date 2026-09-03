@@ -280,6 +280,136 @@ export async function runAgentEvals(): Promise<AgentEvalReport> {
     );
   }
 
+  let transientSearchCalls = 0;
+  const transientSearchOutcome = await runRecovery(
+    ORIGINAL_FLIGHT,
+    DEFAULT_INTENT,
+    {
+      async getDisruption() {
+        return SCHEDULE_CHANGE_EVENT;
+      },
+      async searchAlternatives() {
+        transientSearchCalls += 1;
+        if (transientSearchCalls === 1) {
+          throw new Error("Injected transient Atlas search failure");
+        }
+        return [
+          {
+            ...ALTERNATIVES[1],
+            id: "eval-retry-search",
+            label: "Retry Search",
+          },
+        ];
+      },
+      async verifyOffer() {
+        return {
+          priceChange: "unchanged",
+          source: "SIMULATED_FALLBACK",
+          summary: "Fare unchanged after search retry",
+        };
+      },
+    }
+  );
+  const searchRetryPassed =
+    transientSearchOutcome.status === "RECOVERED" &&
+    transientSearchCalls === 2 &&
+    transientSearchOutcome.steps.some(
+      (step) => step.title === "Atlas search retry 2/2"
+    );
+  results.push(
+    result(
+      "bounded-search-retry",
+      "Recover from one transient Atlas search failure",
+      "RESILIENCE",
+      searchRetryPassed,
+      searchRetryPassed
+        ? "Read-only Atlas search retried once and recovered within the two-attempt budget."
+        : "Transient Atlas search did not recover within the bounded retry policy."
+    )
+  );
+
+  let transientVerifyCalls = 0;
+  const transientVerifyOutcome = await runRecovery(
+    ORIGINAL_FLIGHT,
+    DEFAULT_INTENT,
+    {
+      async getDisruption() {
+        return SCHEDULE_CHANGE_EVENT;
+      },
+      async searchAlternatives() {
+        return [
+          {
+            ...ALTERNATIVES[1],
+            id: "eval-retry-verify",
+            label: "Retry Verify",
+          },
+        ];
+      },
+      async verifyOffer() {
+        transientVerifyCalls += 1;
+        if (transientVerifyCalls === 1) {
+          throw new Error("Injected transient Atlas verify failure");
+        }
+        return {
+          priceChange: "unchanged",
+          source: "SIMULATED_FALLBACK",
+          summary: "Fare unchanged after verify retry",
+        };
+      },
+    }
+  );
+  const verifyRetryPassed =
+    transientVerifyOutcome.status === "RECOVERED" &&
+    transientVerifyCalls === 2 &&
+    transientVerifyOutcome.steps.some(
+      (step) => step.title === "Atlas verify retry 2/2"
+    );
+  results.push(
+    result(
+      "bounded-verify-retry",
+      "Recover from one transient Atlas verification failure",
+      "RESILIENCE",
+      verifyRetryPassed,
+      verifyRetryPassed
+        ? "Read-only fare verification retried once and recovered without relaxing policy."
+        : "Transient verification did not recover within the bounded retry policy."
+    )
+  );
+
+  let exhaustedSearchCalls = 0;
+  let retryBudgetStopped = false;
+  try {
+    await runRecovery(ORIGINAL_FLIGHT, DEFAULT_INTENT, {
+      async getDisruption() {
+        return SCHEDULE_CHANGE_EVENT;
+      },
+      async searchAlternatives() {
+        exhaustedSearchCalls += 1;
+        throw new Error("Injected persistent Atlas search failure");
+      },
+      async verifyOffer() {
+        return {
+          priceChange: "unchanged",
+          source: "SIMULATED_FALLBACK",
+          summary: "Unused",
+        };
+      },
+    });
+  } catch {
+    retryBudgetStopped = exhaustedSearchCalls === 2;
+  }
+  results.push(
+    result(
+      "retry-budget-exhausted",
+      "Stop after bounded retry budget is exhausted",
+      "RESILIENCE",
+      retryBudgetStopped,
+      retryBudgetStopped
+        ? "Persistent provider failure stopped after exactly two read-only attempts; no infinite retry loop."
+        : `Retry budget was not enforced correctly (attempts=${exhaustedSearchCalls}).`
+    )
+  );
+
   const priceIncreaseOutcome = await runRecovery(
     ORIGINAL_FLIGHT,
     { ...DEFAULT_INTENT, minBaggageKg: 0, maxExtraSpendUsd: 200 },

@@ -176,6 +176,77 @@ describe("runRecovery — fare verification branches", () => {
   });
 });
 
+describe("runRecovery — bounded provider retries", () => {
+  test("retries a transient search failure once and then recovers", async () => {
+    let searchCalls = 0;
+    const provider: TripDataProvider = {
+      async getDisruption() {
+        return SCHEDULE_CHANGE_EVENT;
+      },
+      async searchAlternatives() {
+        searchCalls += 1;
+        if (searchCalls === 1) throw new Error("temporary Atlas search transport failure");
+        return [option({ id: "retry-search", label: "Retry Search", extraCostUsd: 20 })];
+      },
+      async verifyOffer() {
+        return UNCHANGED;
+      },
+    };
+
+    const outcome = await runRecovery(ORIGINAL_FLIGHT, DEFAULT_INTENT, provider);
+    expect(outcome.status).toBe("RECOVERED");
+    expect(searchCalls).toBe(2);
+    expect(
+      outcome.steps.some((step) => step.title === "Atlas search retry 2/2")
+    ).toBe(true);
+  });
+
+  test("retries a transient verify transport failure once and then recovers", async () => {
+    let verifyCalls = 0;
+    const provider: TripDataProvider = {
+      async getDisruption() {
+        return SCHEDULE_CHANGE_EVENT;
+      },
+      async searchAlternatives() {
+        return [option({ id: "retry-verify", label: "Retry Verify", extraCostUsd: 20 })];
+      },
+      async verifyOffer() {
+        verifyCalls += 1;
+        if (verifyCalls === 1) throw new Error("temporary Atlas verify transport failure");
+        return UNCHANGED;
+      },
+    };
+
+    const outcome = await runRecovery(ORIGINAL_FLIGHT, DEFAULT_INTENT, provider);
+    expect(outcome.status).toBe("RECOVERED");
+    expect(verifyCalls).toBe(2);
+    expect(
+      outcome.steps.some((step) => step.title === "Atlas verify retry 2/2")
+    ).toBe(true);
+  });
+
+  test("stops after two search attempts when the provider remains unavailable", async () => {
+    let searchCalls = 0;
+    const provider: TripDataProvider = {
+      async getDisruption() {
+        return SCHEDULE_CHANGE_EVENT;
+      },
+      async searchAlternatives() {
+        searchCalls += 1;
+        throw new Error("Atlas remains unavailable");
+      },
+      async verifyOffer() {
+        return UNCHANGED;
+      },
+    };
+
+    await expect(
+      runRecovery(ORIGINAL_FLIGHT, DEFAULT_INTENT, provider)
+    ).rejects.toThrow("Atlas remains unavailable");
+    expect(searchCalls).toBe(2);
+  });
+});
+
 describe("runRecovery — Atlas baggage validation", () => {
   test("self-repairs when the cheapest Atlas offer expires during verification", async () => {
     const provider = fakeProvider(

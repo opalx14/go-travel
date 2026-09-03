@@ -40,6 +40,8 @@ export function AgentOrchestrationTrace() {
   const verifyDone = Boolean(run?.verification) || hasStep(ids, "step-verify");
   const selfRepairTriggered =
     hasStep(ids, "step-provider-reject") || hasStep(ids, "step-baggage-reject");
+  const transientRetryTriggered = hasStep(ids, "step-retry");
+  const recoverySupervisorTriggered = selfRepairTriggered || transientRetryTriggered;
   const approvalBlocked = run?.status === "NEEDS_APPROVAL" && phase === "complete";
   const explanationDone = Boolean(run?.reasoning);
 
@@ -91,12 +93,22 @@ export function AgentOrchestrationTrace() {
     {
       id: "repair",
       label: "Recovery supervisor",
-      detail: selfRepairTriggered
-        ? "Rejected a provider-invalid candidate and re-selected the next policy-valid recovery without relaxing the contract."
-        : "Armed to retry the next policy-valid candidate when an Atlas offer expires, verification fails, or baggage cannot be confirmed.",
+      detail: selfRepairTriggered && transientRetryTriggered
+        ? "Retried a transient read within budget, then rejected the unusable candidate and re-selected the next policy-valid recovery."
+        : transientRetryTriggered
+          ? "Recovered from a transient Atlas read failure with one bounded retry; no state-changing action was retried."
+          : selfRepairTriggered
+            ? "Rejected a provider-invalid candidate and re-selected the next policy-valid recovery without relaxing the contract."
+            : "Armed for one bounded read-only retry and candidate self-repair when Atlas evidence becomes unusable.",
       icon: RotateCcw,
-      state: selfRepairTriggered ? "done" : "pending",
-      provenance: selfRepairTriggered ? "Self-repair executed" : "Self-repair armed",
+      state: recoverySupervisorTriggered ? "done" : "pending",
+      provenance: selfRepairTriggered && transientRetryTriggered
+        ? "Retry + self-repair executed"
+        : transientRetryTriggered
+          ? "Bounded retry executed"
+          : selfRepairTriggered
+            ? "Self-repair executed"
+            : "Retry/self-repair armed",
     },
     {
       id: "approval",

@@ -14,6 +14,22 @@ import {
   selectBestOption,
 } from "./policy-engine";
 import { ASSUMED_RECOVERABLE_VALUE_USD } from "./scenario";
+import { withReadonlyProviderRetry } from "./provider-retry";
+
+function pushReadonlyRetryStep(
+  steps: RecoveryStep[],
+  operation: string,
+  attempt: number,
+  maxAttempts: number,
+  target?: string
+): void {
+  steps.push({
+    id: `step-retry-${steps.length}`,
+    title: `${operation} retry ${attempt}/${maxAttempts}`,
+    detail: `${target ? `${target} · ` : ""}transient provider/tool failure · bounded read-only retry`,
+    tone: "warning",
+  });
+}
 
 function replaceEvaluation(
   evaluations: OptionEvaluation[],
@@ -157,7 +173,14 @@ export async function runRecovery(
   });
 
   // 3. Evaluate every alternative.
-  const alternatives = await provider.searchAlternatives(trip.id);
+  const alternatives = await withReadonlyProviderRetry(
+    () => provider.searchAlternatives(trip.id),
+    {
+      operation: "Atlas search",
+      onRetry: ({ attempt, maxAttempts }) =>
+        pushReadonlyRetryStep(steps, "Atlas search", attempt, maxAttempts),
+    }
+  );
   let evaluations = alternatives.map((option) =>
     evaluateOption(option, intent, trip.departure, trip.destination)
   );
@@ -231,7 +254,21 @@ export async function runRecovery(
     selected.baggageKg === undefined &&
     intent.minBaggageKg > 0
   ) {
-    const verification = await provider.verifyOffer(selected);
+    const candidateToVerify = selected;
+    const verification = await withReadonlyProviderRetry(
+      () => provider.verifyOffer(candidateToVerify),
+      {
+        operation: "Atlas verify",
+        onRetry: ({ attempt, maxAttempts }) =>
+          pushReadonlyRetryStep(
+            steps,
+            "Atlas verify",
+            attempt,
+            maxAttempts,
+            candidateToVerify.flightNo
+          ),
+      }
+    );
 
     // A price increase is a mandatory passenger checkpoint. Expired/failed
     // offers are treated as candidate-local failures: reject that offer and
@@ -370,7 +407,19 @@ export async function runRecovery(
   if (policyCheck.withinAuthority && intent.autopilot) {
     // If baggage validation already verified the fare, reuse that same fresh
     // verification. Otherwise perform the normal verification now.
-    const verification = preverified ?? (await provider.verifyOffer(selected));
+    const verification =
+      preverified ??
+      (await withReadonlyProviderRetry(() => provider.verifyOffer(selected), {
+        operation: "Atlas verify",
+        onRetry: ({ attempt, maxAttempts }) =>
+          pushReadonlyRetryStep(
+            steps,
+            "Atlas verify",
+            attempt,
+            maxAttempts,
+            selected.flightNo
+          ),
+      }));
     return verifyOutcome(verification, selected, {
       intent,
       event,
@@ -700,7 +749,10 @@ export async function approveRecovery(
     };
   }
 
-  const verification = await provider.verifyOffer(selected);
+  const verification = await withReadonlyProviderRetry(
+    () => provider.verifyOffer(selected),
+    { operation: "Atlas verify after approval" }
+  );
   const source = verificationSourceLabel(verification);
 
   if (
