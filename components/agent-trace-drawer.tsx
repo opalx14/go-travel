@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ChevronRight, X } from "lucide-react";
 import { AgentConsole } from "@/components/agent-console";
 import { AgentEvalPanel } from "@/components/agent-eval-panel";
+import { AgentFailureLab } from "@/components/agent-failure-lab";
 import { AgentOrchestrationTrace } from "@/components/agent-orchestration-trace";
 import { CaseCard } from "@/components/case-card";
 import { DecisionTrace } from "@/components/decision-trace";
@@ -98,6 +99,7 @@ export function AgentTraceDrawer() {
                 <DecisionTrace />
               </div>
               <AgentOrchestrationTrace />
+              <AgentFailureLab />
               <AgentEvalPanel />
               <AgentConsole />
             </div>

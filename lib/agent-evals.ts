@@ -18,6 +18,8 @@ export interface AgentEvalResult {
   category: AgentEvalCategory;
   passed: boolean;
   detail: string;
+  outcome?: "RECOVERED" | "HUMAN_STOP" | "SAFE_FAIL";
+  trace?: string[];
 }
 
 export interface AgentEvalReport {
@@ -33,9 +35,10 @@ function result(
   name: string,
   category: AgentEvalCategory,
   passed: boolean,
-  detail: string
+  detail: string,
+  evidence?: Pick<AgentEvalResult, "outcome" | "trace">
 ): AgentEvalResult {
-  return { id, name, category, passed, detail };
+  return { id, name, category, passed, detail, ...evidence };
 }
 
 function provider(options: {
@@ -275,10 +278,104 @@ export async function runAgentEvals(): Promise<AgentEvalReport> {
         recoveredWithBackup,
         recoveredWithBackup
           ? `Primary offer ${failure}; agent rejected it and recovered with the next policy-valid Atlas candidate.`
-          : `Agent did not recover safely after the primary offer ${failure}.`
+          : `Agent did not recover safely after the primary offer ${failure}.`,
+        {
+          outcome: recoveredWithBackup ? "RECOVERED" : "SAFE_FAIL",
+          trace: [
+            "Atlas Primary selected",
+            failure === "expired" ? "Atlas verify → OFFER_EXPIRED" : "Atlas verify → failed",
+            "Recovery supervisor rejects primary offer",
+            "Policy engine re-selects Atlas Backup",
+            recoveredWithBackup ? "Backup verified → RECOVERED" : "Recovery did not complete",
+          ],
+        }
       )
     );
   }
+
+  const baggageRepairAlternatives: FlightOption[] = [
+    {
+      ...ALTERNATIVES[1],
+      id: "eval-baggage-unavailable-first",
+      label: "Atlas No Bag",
+      source: "ATLAS_SANDBOX",
+      atlasOfferId: "eval_offer_no_bag",
+      baggageKg: undefined,
+      replacementPriceUsd: 14,
+      extraCostUsd: 14,
+    },
+    {
+      ...ALTERNATIVES[1],
+      id: "eval-baggage-unavailable-backup",
+      label: "Atlas Bag Backup",
+      source: "ATLAS_SANDBOX",
+      atlasOfferId: "eval_offer_bag_backup",
+      baggageKg: undefined,
+      replacementPriceUsd: 22,
+      extraCostUsd: 22,
+    },
+  ];
+  const baggageUnavailableOutcome = await runRecovery(
+    ORIGINAL_FLIGHT,
+    DEFAULT_INTENT,
+    provider({
+      alternatives: baggageRepairAlternatives,
+      verification: (option) =>
+        option.id === "eval-baggage-unavailable-first"
+          ? {
+              priceChange: "unchanged",
+              currentPrice: 14,
+              source: "ATLAS_SANDBOX",
+              summary: "Fare unchanged but baggage unavailable",
+              baggageSupported: false,
+              baggageStatus: "unavailable",
+            }
+          : {
+              priceChange: "unchanged",
+              currentPrice: 22,
+              source: "ATLAS_SANDBOX",
+              summary: "Backup fare unchanged",
+              baggageSupported: true,
+              baggageStatus: "available",
+              baggageOptions: [
+                {
+                  baggageId: "bag-lab-20",
+                  segmentId: "seg-lab-20",
+                  weightKg: 20,
+                  price: 5,
+                  currency: "USD",
+                },
+              ],
+            },
+    })
+  );
+  const baggageUnavailableRecovered =
+    baggageUnavailableOutcome.status === "RECOVERED" &&
+    baggageUnavailableOutcome.selected?.id === "eval-baggage-unavailable-backup" &&
+    baggageUnavailableOutcome.evaluations.find(
+      (item) => item.option.id === "eval-baggage-unavailable-first"
+    )?.valid === false;
+  results.push(
+    result(
+      "baggage-unavailable-repair",
+      "Self-repair when baggage is unavailable",
+      "RESILIENCE",
+      baggageUnavailableRecovered,
+      baggageUnavailableRecovered
+        ? "Candidate without required baggage was rejected and the next contract-valid Atlas offer recovered the trip."
+        : "Baggage-unavailable candidate was not safely replaced.",
+      {
+        outcome: baggageUnavailableRecovered ? "RECOVERED" : "SAFE_FAIL",
+        trace: [
+          "Atlas No Bag selected",
+          "Atlas verify → baggage unavailable",
+          "Policy Guardian rejects baggage mismatch",
+          "Recovery supervisor selects Atlas Bag Backup",
+          baggageUnavailableRecovered ? "20kg baggage verified → RECOVERED" : "Recovery did not complete",
+        ],
+      }
+    )
+  );
 
   let transientSearchCalls = 0;
   const transientSearchOutcome = await runRecovery(
@@ -324,7 +421,16 @@ export async function runAgentEvals(): Promise<AgentEvalReport> {
       searchRetryPassed,
       searchRetryPassed
         ? "Read-only Atlas search retried once and recovered within the two-attempt budget."
-        : "Transient Atlas search did not recover within the bounded retry policy."
+        : "Transient Atlas search did not recover within the bounded retry policy.",
+      {
+        outcome: searchRetryPassed ? "RECOVERED" : "SAFE_FAIL",
+        trace: [
+          "Atlas search attempt 1 → transient transport error",
+          "Retry supervisor waits within bounded backoff",
+          "Atlas search attempt 2 → candidates returned",
+          searchRetryPassed ? "Recovery continues → RECOVERED" : "Retry did not recover",
+        ],
+      }
     )
   );
 
@@ -441,7 +547,22 @@ export async function runAgentEvals(): Promise<AgentEvalReport> {
         priceIncreaseOutcome.approval === "PRICE_INCREASED",
       priceIncreaseOutcome.approval === "PRICE_INCREASED"
         ? "Provider fare increase becomes an explicit passenger checkpoint."
-        : "Fare increase did not create the required approval checkpoint."
+        : "Fare increase did not create the required approval checkpoint.",
+      {
+        outcome:
+          priceIncreaseOutcome.approval === "PRICE_INCREASED"
+            ? "HUMAN_STOP"
+            : "SAFE_FAIL",
+        trace: [
+          "Atlas offer selected",
+          "Atlas verify → fare $19 → $34",
+          "Policy Guardian detects provider price increase",
+          "No automatic confirm-price call is allowed",
+          priceIncreaseOutcome.approval === "PRICE_INCREASED"
+            ? "HUMAN APPROVAL REQUIRED → STOP"
+            : "Approval checkpoint missing",
+        ],
+      }
     )
   );
 
@@ -530,4 +651,20 @@ export async function runAgentEvals(): Promise<AgentEvalReport> {
     gateStatus: failed === 0 ? "PASS" : "FAIL",
     results,
   };
+}
+
+export const FAILURE_LAB_CASE_IDS = [
+  "bounded-search-retry",
+  "self-repair-expired",
+  "price-increase-checkpoint",
+  "baggage-unavailable-repair",
+] as const;
+
+export type FailureLabCaseId = (typeof FAILURE_LAB_CASE_IDS)[number];
+
+export async function runAgentFailureCase(
+  id: FailureLabCaseId
+): Promise<AgentEvalResult | null> {
+  const report = await runAgentEvals();
+  return report.results.find((item) => item.id === id) ?? null;
 }

@@ -5,9 +5,9 @@ describe("TripIntent agent eval suite", () => {
   test("passes every deterministic safety and resilience gate", async () => {
     const report = await runAgentEvals();
 
-    expect(report.total).toBe(13);
+    expect(report.total).toBe(14);
     expect(report.failed).toBe(0);
-    expect(report.passed).toBe(13);
+    expect(report.passed).toBe(14);
     expect(report.gateStatus).toBe("PASS");
     expect(report.results.every((item) => item.passed)).toBe(true);
   });
