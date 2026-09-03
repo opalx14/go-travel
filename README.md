@@ -213,7 +213,7 @@ Navigate to `/operations` in the app to inspect:
 | Safety/resilience gates stay reproducible | Technical Proof shows a 14/14 PASS matrix plus an interactive Failure Lab for timeout, expiry, price-jump and baggage-unavailable injections | `lib/agent-evals.ts`, `lib/provider-retry.ts`, `app/api/agent/evals/route.ts`, `components/agent-failure-lab.tsx`, `components/agent-eval-panel.tsx` | `lib/agent-evals.test.ts`, `lib/provider-retry.test.ts`, `bun scripts/agent-evals.ts` |
 | Self-hosted AI is verifiable | Header badge and `/api/ai/health` show configured / connected / model-ready state | `app/api/ai/health/route.ts`, `components/nav-header.tsx`, `lib/qwen-runtime.ts` | `lib/qwen-runtime.test.ts`, `bun run qwen:smoke` |
 | Human-in-the-loop authority gate | `$10` demo scenario pauses before over-authority action | `lib/recovery-engine.ts`, `components/action-zone.tsx` | recovery authority/approval tests |
-| Operator observability | Admin shows the same persisted traveler decision stream | `app/api/admin/live/route.ts`, `lib/admin-live.ts`, `components/admin-dashboard.tsx` | SQLite-backed runtime state |
+| Operator observability | Admin shows the persisted traveler decision stream; Technical Proof derives replayable run telemetry from the same outcome (candidates, rejects, retries, repairs, approval, verification, explanation source) | `app/api/admin/live/route.ts`, `lib/admin-live.ts`, `lib/agent-telemetry.ts`, `components/agent-telemetry-panel.tsx` | SQLite-backed runtime state + `lib/agent-telemetry.test.ts` |
 
 The traveler-side **Agent decision console** also exposes a provenance rail: **Intent → Disruption → Search → Deterministic Decision → Read-only Explanation**.
 

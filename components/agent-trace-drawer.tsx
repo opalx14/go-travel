@@ -6,6 +6,7 @@ import { AgentConsole } from "@/components/agent-console";
 import { AgentEvalPanel } from "@/components/agent-eval-panel";
 import { AgentFailureLab } from "@/components/agent-failure-lab";
 import { AgentOrchestrationTrace } from "@/components/agent-orchestration-trace";
+import { AgentTelemetryPanel } from "@/components/agent-telemetry-panel";
 import { CaseCard } from "@/components/case-card";
 import { DecisionTrace } from "@/components/decision-trace";
 import { useDemo } from "@/lib/demo-store";
@@ -99,6 +100,7 @@ export function AgentTraceDrawer() {
                 <DecisionTrace />
               </div>
               <AgentOrchestrationTrace />
+              <AgentTelemetryPanel />
               <AgentFailureLab />
               <AgentEvalPanel />
               <AgentConsole />
