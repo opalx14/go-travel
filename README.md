@@ -211,6 +211,7 @@ Navigate to `/operations` in the app to inspect:
 | LLM cannot override safety | Decision is computed before Qwen explanation is requested | `lib/recovery-engine.ts`, `app/api/agent/explain/route.ts` | `lib/decision-explainer.test.ts` |
 | Qwen can orchestrate tools without owning policy | Planner selects only from state-derived `allowedTools`; Atlas Live smoke refuses simulated fallback | `lib/agent-planner.ts`, `scripts/agent-loop-live-smoke.ts` | `lib/agent-planner.test.ts`, `bun scripts/agent-loop-smoke.ts`, `bun scripts/agent-loop-live-smoke.ts` |
 | Safety/resilience gates stay reproducible | Technical Proof shows a 15/15 PASS matrix plus an interactive Failure Lab and explicit tool permission manifest; Atlas planner capabilities remain read-only and approval remains human-only | `lib/agent-evals.ts`, `lib/provider-retry.ts`, `lib/agent-tool-manifest.ts`, `app/api/agent/evals/route.ts`, `components/agent-failure-lab.tsx`, `components/agent-tool-manifest-panel.tsx` | `lib/agent-evals.test.ts`, `lib/provider-retry.test.ts`, `lib/agent-tool-manifest.test.ts`, `bun scripts/agent-evals.ts` |
+| End-to-end behavior is benchmarked | Technical Proof runs a deterministic scenario matrix spanning autonomous recovery, two HITL paths, impossible deadline failure, provider price jump, baggage self-repair and transient search recovery | `lib/agent-benchmark.ts`, `app/api/agent/benchmark/route.ts`, `components/agent-benchmark-panel.tsx` | `lib/agent-benchmark.test.ts`, `bun scripts/agent-benchmark.ts` |
 | Self-hosted AI is verifiable | Header badge and `/api/ai/health` show configured / connected / model-ready state | `app/api/ai/health/route.ts`, `components/nav-header.tsx`, `lib/qwen-runtime.ts` | `lib/qwen-runtime.test.ts`, `bun run qwen:smoke` |
 | Human-in-the-loop authority gate | `$10` demo scenario pauses before over-authority action | `lib/recovery-engine.ts`, `components/action-zone.tsx` | recovery authority/approval tests |
 | Operator observability | Admin shows the persisted traveler decision stream; Technical Proof derives replayable run telemetry from the same outcome (candidates, rejects, retries, repairs, approval, verification, explanation source) | `app/api/admin/live/route.ts`, `lib/admin-live.ts`, `lib/agent-telemetry.ts`, `components/agent-telemetry-panel.tsx` | SQLite-backed runtime state + `lib/agent-telemetry.test.ts` |
@@ -230,6 +231,7 @@ bun run qwen:smoke   # OpenAI-compatible local Qwen endpoint verification
 bun scripts/agent-evals.ts  # 8 deterministic agent safety/resilience gates
 bun scripts/agent-loop-smoke.ts       # Bounded Qwen planner with deterministic tool evidence
 bun scripts/agent-loop-live-smoke.ts  # Bounded Qwen planner against Atlas Sandbox Live
+bun scripts/agent-benchmark.ts        # End-to-end deterministic recovery scenario matrix
 ```
 
 ---
