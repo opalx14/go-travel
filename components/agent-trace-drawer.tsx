@@ -17,6 +17,7 @@ import { AgentToolManifestPanel } from "@/components/agent-tool-manifest-panel";
 import { CaseCard } from "@/components/case-card";
 import { DecisionTrace } from "@/components/decision-trace";
 import { useDemo } from "@/lib/demo-store";
+import { OPEN_AGENT_TRACE_EVENT } from "@/lib/judge-visible-proof";
 
 /**
  * Judge/technical proof is intentionally secondary to the passenger story.
@@ -26,6 +27,12 @@ export function AgentTraceDrawer() {
   const [open, setOpen] = useState(false);
   const { phase, activeRun } = useDemo();
   const available = phase !== "idle" || Boolean(activeRun);
+
+  useEffect(() => {
+    const onOpenProof = () => setOpen(true);
+    window.addEventListener(OPEN_AGENT_TRACE_EVENT, onOpenProof);
+    return () => window.removeEventListener(OPEN_AGENT_TRACE_EVENT, onOpenProof);
+  }, []);
 
   useEffect(() => {
     if (!open) return;

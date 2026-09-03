@@ -240,6 +240,59 @@ export function ActionZone() {
       );
     }
 
+    if (outcome.status === "NEEDS_APPROVAL" && outcome.approval === "SCOPE_EXPANSION") {
+      return (
+        <div className="ti-surface animate-in fade-in overflow-hidden rounded-2xl border-amber-500/25 duration-500">
+          <div className="border-b ti-divider bg-amber-500/[0.035] px-6 py-5 text-center sm:px-8">
+            <p className="flex items-center justify-center gap-2 text-lg font-semibold text-amber-700 dark:text-amber-300">
+              <UserCheck className="size-5" />
+              Broader recovery needs your consent
+            </p>
+            <p className="mx-auto mt-1 max-w-2xl text-sm text-muted-foreground">
+              TripIntent exhausted contract-preserving options and stopped before widening the airport or travel date.
+            </p>
+          </div>
+
+          <div className="px-6 py-5 sm:px-8">
+            <p className="label-caps font-bold text-amber-600 dark:text-amber-300">
+              Recovery scope ladder
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {(outcome.escalation?.steps ?? []).map((step) => (
+                <div
+                  key={step.scope}
+                  className="rounded-xl border border-border/70 bg-background/60 px-3.5 py-3"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-mono text-[11px] font-semibold text-foreground">
+                      {step.scope.replaceAll("_", " ")}
+                    </p>
+                    <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-[9px] text-muted-foreground">
+                      {step.status}
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                    {step.reason}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.035] px-4 py-3 text-sm text-muted-foreground">
+              <span className="font-semibold text-amber-700 dark:text-amber-300">Human boundary:</span>{" "}
+              nearby-airport/date search is not executed until the passenger explicitly expands the contract. The current prototype stops here rather than silently relaxing constraints.
+            </div>
+
+            <div className="mt-5 flex justify-center">
+              <Button size="lg" variant="outline" onClick={declineRecovery}>
+                Keep current itinerary
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     if (outcome.status === "NEEDS_APPROVAL" && selected) {
       if (outcome.approval === "PRICE_INCREASED") {
         const verification = outcome.verification;

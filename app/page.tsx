@@ -3,6 +3,7 @@
 import { AgentTraceDrawer } from "@/components/agent-trace-drawer";
 import { AirportScene } from "@/components/airport-scene";
 import { JourneyTimeline } from "@/components/journey-timeline";
+import { JudgeProofStrip } from "@/components/judge-proof-strip";
 import { MobileDock } from "@/components/mobile-dock";
 import { useDemo } from "@/lib/demo-store";
 import { SCHEDULE_CHANGE_EVENT } from "@/lib/scenario";
@@ -59,6 +60,9 @@ export default function PassengerPage() {
 
             <div className="mx-auto w-full max-w-5xl">
               <JourneyTimeline showHero={false} />
+              <div className="mt-6">
+                <JudgeProofStrip />
+              </div>
             </div>
           </section>
 
